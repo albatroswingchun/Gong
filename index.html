@@ -16,7 +16,6 @@
 <body>
   <div id="app">
 
-    <!-- ── HEADER ── -->
     <header id="main-header">
       <div class="header-left">
         <span class="logo-char">功</span>
@@ -28,7 +27,6 @@
       </div>
     </header>
 
-    <!-- ── NAV TABS ── -->
     <nav id="main-nav">
       <button class="tab-btn active" data-tab="profil">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -52,10 +50,8 @@
       </button>
     </nav>
 
-    <!-- ── MAIN CONTENT ── -->
     <main id="main-content">
 
-      <!-- PROFIL TAB -->
       <section id="tab-profil" class="tab-section active">
         <div class="radar-container">
           <canvas id="radar-canvas" width="340" height="340"></canvas>
@@ -68,7 +64,6 @@
         </div>
       </section>
 
-      <!-- TECHNIQUES TAB -->
       <section id="tab-techniques" class="tab-section">
         <div class="techniques-header">
           <h2>Techniques</h2>
@@ -77,13 +72,11 @@
         <div id="techniques-list" class="techniques-list"></div>
       </section>
 
-      <!-- HISTORIQUE TAB -->
       <section id="tab-historique" class="tab-section">
         <h2>Historique des modifications</h2>
         <div id="history-list" class="history-list"></div>
       </section>
 
-      <!-- NOTATION TAB -->
       <section id="tab-notation" class="tab-section">
         <h2>Guide de notation</h2>
         <div class="notation-guide">
@@ -108,7 +101,6 @@
         </div>
       </section>
 
-      <!-- COMMUNAUTE TAB -->
       <section id="tab-communaute" class="tab-section">
         <h2>Communauté</h2>
         <p class="community-intro">Comparez votre diagramme avec d'autres pratiquants.</p>
@@ -123,7 +115,6 @@
     </main>
   </div>
 
-  <!-- ── AUTH MODAL ── -->
   <div id="auth-modal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-box">
@@ -132,15 +123,16 @@
         <button class="modal-tab active" data-modal-tab="login">Connexion</button>
         <button class="modal-tab" data-modal-tab="register">Inscription</button>
       </div>
+
       <div id="modal-login" class="modal-form">
         <input type="text" id="login-pseudo" placeholder="Pseudo" autocomplete="username" />
         <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password" />
         <button id="login-btn" class="btn-primary">Se connecter</button>
         <p id="login-error" class="form-error hidden"></p>
       </div>
+
       <div id="modal-register" class="modal-form hidden">
         <input type="text" id="reg-pseudo" placeholder="Pseudo" autocomplete="username" />
-        <input type="email" id="reg-email" placeholder="Email (optionnel)" autocomplete="email" />
         <input type="password" id="reg-password" placeholder="Mot de passe" autocomplete="new-password" />
         <button id="register-btn" class="btn-primary">Créer mon compte</button>
         <p id="reg-error" class="form-error hidden"></p>
@@ -148,7 +140,6 @@
     </div>
   </div>
 
-  <!-- ── ADD TECHNIQUE MODAL ── -->
   <div id="technique-modal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-box">
@@ -172,7 +163,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     window.GONG_SUPABASE_URL = "https://esdhkwxkjqpisxysvgyw.supabase.co";
-    window.GONG_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzZGhrd3hranFwaXhzeXN2Z3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MTAxNTksImV4cCI6MjA5MjA4NjE1OX0.6KSK4ZnovGR_1NS1E1cqQdgVNqqpPTT152BN4TnutEg";
+    window.GONG_SUPABASE_ANON_KEY = "REMPLACE_ICI_PAR_TA_CLE_ANON_COMPLETE";
   </script>
   <script src="app.js"></script>
 </body>
