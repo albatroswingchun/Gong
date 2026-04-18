@@ -16,6 +16,33 @@ const DEFAULT_SKILLS = [
   { id: 'technique',  name: 'Technique',      value: 0 },
 ];
 
+const DEFAULT_TECHNIQUES = [
+  { name: 'Pak Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Pak Sao Latéral', category: 'Wing Chun', mastered: false },
+  { name: 'Pak Sao Inversé', category: 'Wing Chun', mastered: false },
+  { name: 'Tan Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Bon Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Jut Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Jut Sao Bas', category: 'Wing Chun', mastered: false },
+  { name: 'Jut Sao Intérieur', category: 'Wing Chun', mastered: false },
+  { name: 'Bil Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Fook Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Garn Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Gum Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Fut Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Chuen Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Huen Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Huen Sao Large', category: 'Wing Chun', mastered: false },
+  { name: 'Huen Sao Ouverture', category: 'Wing Chun', mastered: false },
+  { name: 'Wu Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Tarn Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Larp Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Larn Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Quan Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Qan Sao', category: 'Wing Chun', mastered: false },
+];
+
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
   user: null,           // { pseudo, passwordHash }
@@ -36,6 +63,7 @@ function loadState() {
     }
   } catch(e) { /* ignore */ }
   if (!state.skills.length) state.skills = DEFAULT_SKILLS.map(s => ({ ...s }));
+  if (!state.techniques.length) state.techniques = DEFAULT_TECHNIQUES.map(t => ({ ...t }));
   if (!state.users) state.users = [];
 }
 
@@ -516,14 +544,14 @@ document.addEventListener('DOMContentLoaded', () => {
       pseudo,
       passwordHash: hash,
       skills: DEFAULT_SKILLS.map(s => ({ ...s })),
-      techniques: [],
+      techniques: DEFAULT_TECHNIQUES.map(t => ({ ...t })),
       history: [],
       observations: '',
     };
     state.users.push(newUser);
     state.user = { pseudo };
     state.skills = newUser.skills;
-    state.techniques = [];
+    state.techniques = DEFAULT_TECHNIQUES.map(t => ({ ...t }));
     state.history = [];
     state.observations = '';
     saveState();
