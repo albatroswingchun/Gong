@@ -35,29 +35,37 @@ const DEFAULT_SKILLS = [
 ];
 
 const DEFAULT_TECHNIQUES = [
-  { name: 'Pak Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Pak Sao Latéral', category: 'Wing Chun', mastered: false },
-  { name: 'Pak Sao Inversé', category: 'Wing Chun', mastered: false },
-  { name: 'Tan Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Bon Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Jut Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Jut Sao Bas', category: 'Wing Chun', mastered: false },
-  { name: 'Jut Sao Intérieur', category: 'Wing Chun', mastered: false },
-  { name: 'Bil Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Fook Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Garn Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Gum Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Fut Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Chuen Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Huen Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Huen Sao Large', category: 'Wing Chun', mastered: false },
-  { name: 'Huen Sao Ouverture', category: 'Wing Chun', mastered: false },
-  { name: 'Wu Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Tarn Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Larp Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Larn Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Kuan Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Kan Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Pak Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Pak Sao Latéral', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Pak Sao Inversé', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Tan Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Bon Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Jut Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Jut Sao Bas', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Jut Sao Intérieur', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Bil Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Fook Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Garn Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Gum Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Fut Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Chuen Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Huen Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Huen Sao Large', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Huen Sao Ouverture', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Wu Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Tarn Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Larp Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Larn Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Quan Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Qan Sao', category: 'Wing Chun', mastered: false, locked: true },
+
+  { name: 'Siu Lim Tao', category: 'Formes', mastered: false, locked: true },
+  { name: 'Chum Kiu', category: 'Formes', mastered: false, locked: true },
+  { name: 'Bil Jee', category: 'Formes', mastered: false, locked: true },
+  { name: 'Siu Lim Tao Avancée', category: 'Formes', mastered: false, locked: true },
+  { name: 'Mannequin de bois - 108 Mouvements', category: 'Formes', mastered: false, locked: true },
+  { name: 'Arme - Couteaux Papillons', category: 'Formes', mastered: false, locked: true },
+  { name: 'Arme - Bâton Long', category: 'Formes', mastered: false, locked: true },
 ];
 
 function cloneSkills() {
@@ -68,13 +76,18 @@ function cloneTechniques() {
   return DEFAULT_TECHNIQUES.map((t) => ({ ...t }));
 }
 
+function techniqueKey(tech) {
+  return `${String(tech.category || '').trim()}::${String(tech.name || '').trim()}`;
+}
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
-  user: null, // { id, pseudo, email }
+  user: null,
   skills: cloneSkills(),
   techniques: cloneTechniques(),
   history: [],
   observations: '',
+  techniqueFilter: 'Toutes',
 };
 
 let remoteSyncTimer = null;
@@ -110,9 +123,126 @@ const closeCompareBtn = document.getElementById('close-compare');
 
 const installBtn = document.getElementById('install-btn');
 
-const loadingScreen = document.getElementById('loading-screen');
-
 // ── HELPERS ──────────────────────────────────────────────────────────────────
+function injectDynamicStyles() {
+  if (document.getElementById('gong-dynamic-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'gong-dynamic-styles';
+  style.textContent = `
+    .technique-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 18px 0;
+    }
+
+    .technique-filter-btn {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color: rgba(255,255,255,0.78);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .technique-filter-btn:hover {
+      border-color: rgba(255, 208, 0, 0.28);
+      color: #f0f0f0;
+    }
+
+    .technique-filter-btn.active {
+      background: rgba(255, 208, 0, 0.12);
+      color: #ffd000;
+      border-color: rgba(255, 208, 0, 0.3);
+      box-shadow: 0 0 0 1px rgba(255, 208, 0, 0.08) inset;
+    }
+
+    .technique-item.locked .technique-delete {
+      display: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureTechniqueFiltersContainer() {
+  if (document.getElementById('technique-filters')) return;
+
+  const techniquesSection = document.getElementById('tab-techniques');
+  const techniquesHeader = techniquesSection?.querySelector('.techniques-header');
+  if (!techniquesSection || !techniquesHeader) return;
+
+  const filters = document.createElement('div');
+  filters.id = 'technique-filters';
+  filters.className = 'technique-filters';
+  techniquesHeader.insertAdjacentElement('afterend', filters);
+}
+
+function ensureFormesOption() {
+  if (!newTechniqueCategory) return;
+
+  const exists = Array.from(newTechniqueCategory.options).some(
+    (opt) => opt.value === 'Formes'
+  );
+
+  if (!exists) {
+    const opt = document.createElement('option');
+    opt.value = 'Formes';
+    opt.textContent = 'Formes';
+    newTechniqueCategory.appendChild(opt);
+  }
+}
+
+function getTechniqueCategories() {
+  const seen = new Set();
+  const categories = [];
+
+  state.techniques.forEach((tech) => {
+    const category = String(tech.category || 'Autre').trim() || 'Autre';
+    if (!seen.has(category)) {
+      seen.add(category);
+      categories.push(category);
+    }
+  });
+
+  return categories;
+}
+
+function renderTechniqueFilters() {
+  ensureTechniqueFiltersContainer();
+
+  const container = document.getElementById('technique-filters');
+  if (!container) return;
+
+  const categories = getTechniqueCategories();
+  const filters = ['Toutes', ...categories];
+
+  if (!filters.includes(state.techniqueFilter)) {
+    state.techniqueFilter = 'Toutes';
+  }
+
+  container.innerHTML = filters.map((category) => `
+    <button
+      type="button"
+      class="technique-filter-btn ${state.techniqueFilter === category ? 'active' : ''}"
+      data-category="${category}"
+    >
+      ${category}
+    </button>
+  `).join('');
+
+  container.querySelectorAll('.technique-filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.techniqueFilter = btn.dataset.category;
+      renderTechniqueFilters();
+      renderTechniques();
+    });
+  });
+}
+
 function normalizeSkills(skillsFromDb) {
   const incoming = Array.isArray(skillsFromDb) ? skillsFromDb : [];
   const byId = new Map(incoming.map((s) => [s.id, s]));
@@ -125,16 +255,39 @@ function normalizeSkills(skillsFromDb) {
   });
 }
 
-function normalizeTechniques(techniques) {
-  return Array.isArray(techniques)
-    ? techniques
-        .map((t) => ({
-          name: String(t.name || ''),
-          category: String(t.category || 'Autre'),
-          mastered: !!t.mastered,
-        }))
-        .filter((t) => t.name.trim())
-    : cloneTechniques();
+function normalizeTechniques(techniquesFromDb) {
+  const incoming = Array.isArray(techniquesFromDb) ? techniquesFromDb : [];
+
+  const normalizedIncoming = incoming
+    .map((t) => ({
+      name: String(t.name || '').trim(),
+      category: String(t.category || 'Autre').trim() || 'Autre',
+      mastered: !!t.mastered,
+      locked: !!t.locked,
+    }))
+    .filter((t) => t.name);
+
+  const incomingByKey = new Map(normalizedIncoming.map((t) => [techniqueKey(t), t]));
+
+  const mergedDefaults = DEFAULT_TECHNIQUES.map((base) => {
+    const existing = incomingByKey.get(techniqueKey(base));
+    return {
+      ...base,
+      mastered: existing ? !!existing.mastered : !!base.mastered,
+      locked: true,
+    };
+  });
+
+  const defaultKeys = new Set(DEFAULT_TECHNIQUES.map((t) => techniqueKey(t)));
+
+  const customTechniques = normalizedIncoming
+    .filter((t) => !defaultKeys.has(techniqueKey(t)))
+    .map((t) => ({
+      ...t,
+      locked: !!t.locked,
+    }));
+
+  return [...mergedDefaults, ...customTechniques];
 }
 
 function resetStateToDefaults() {
@@ -142,6 +295,7 @@ function resetStateToDefaults() {
   state.techniques = cloneTechniques();
   state.history = [];
   state.observations = '';
+  state.techniqueFilter = 'Toutes';
   if (obsEl) obsEl.value = '';
 }
 
@@ -242,7 +396,10 @@ function switchTab(name) {
   });
 
   if (name === 'profil') drawRadar('radar-canvas', state.skills);
-  if (name === 'techniques') renderTechniques();
+  if (name === 'techniques') {
+    renderTechniqueFilters();
+    renderTechniques();
+  }
   if (name === 'historique') renderHistory();
   if (name === 'communaute') renderCommunity();
 }
@@ -313,7 +470,7 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
   const H = canvas.height;
   const cx = W / 2;
   const cy = H / 2;
-  const R = Math.min(W, H) * 0.38;
+  const R = Math.min(W, H) * 0.31;
   const N = skills.length;
   const levels = 5;
 
@@ -399,15 +556,24 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
 
   for (let i = 0; i < N; i++) {
     const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
-    const labelR = R + 22;
-    const x = cx + labelR * Math.cos(angle);
+
+    let labelR = R + 34;
+    let offsetX = 0;
+
+    if (skills[i].name === 'Structure') {
+      labelR = R + 26;
+      offsetX = -18;
+    }
+
+    const x = cx + labelR * Math.cos(angle) + offsetX;
     const y = cy + labelR * Math.sin(angle);
 
     ctx.font = '600 11px Barlow, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = skills[i].name === 'Coordination' ? '#f1f1f1' : colorStr(skills[i].value);
-    const label = skills[i].name === 'Coordination' ? 'Coord.' : skills[i].name.toUpperCase();
+    ctx.fillStyle = colorStr(skills[i].value);
+
+    const label = skills[i].name.toUpperCase();
     ctx.fillText(label, x, y);
   }
 
@@ -481,10 +647,12 @@ async function loadRemoteUserState() {
   state.techniques = normalizeTechniques(data.techniques);
   state.history = Array.isArray(data.history) ? data.history : [];
   state.observations = typeof data.observations === 'string' ? data.observations : '';
+  state.techniqueFilter = 'Toutes';
 
   if (obsEl) obsEl.value = state.observations;
 
   renderSkills();
+  renderTechniqueFilters();
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
@@ -617,40 +785,49 @@ function renderTechniques() {
 
   container.innerHTML = '';
 
-  if (!state.techniques.length) {
-    container.innerHTML = '<p style="color:var(--text-3);font-size:.88rem;text-align:center;padding:30px 0">Aucune technique. Appuyez sur + pour en ajouter.</p>';
+  const filteredTechniques = state.techniques.filter((tech) => {
+    return state.techniqueFilter === 'Toutes' || tech.category === state.techniqueFilter;
+  });
+
+  if (!filteredTechniques.length) {
+    container.innerHTML = '<p style="color:var(--text-3);font-size:.88rem;text-align:center;padding:30px 0">Aucune technique dans cette catégorie.</p>';
     return;
   }
 
-  state.techniques.forEach((tech, idx) => {
+  filteredTechniques.forEach((tech) => {
+    const idx = state.techniques.findIndex((t) => techniqueKey(t) === techniqueKey(tech));
     const div = document.createElement('div');
-    div.className = `technique-item ${tech.mastered ? 'mastered' : ''}`;
+    div.className = `technique-item ${tech.mastered ? 'mastered' : ''} ${tech.locked ? 'locked' : ''}`;
+
     div.innerHTML = `
       <div class="technique-check" data-idx="${idx}"></div>
       <div class="technique-info">
         <div class="technique-name">${tech.name}</div>
         <div class="technique-category">${tech.category}</div>
       </div>
-      <button class="technique-delete" data-idx="${idx}" title="Supprimer" type="button">✕</button>
+      ${tech.locked ? '' : `<button class="technique-delete" data-idx="${idx}" title="Supprimer" type="button">✕</button>`}
     `;
-
-    const deleteBtn = div.querySelector('.technique-delete');
 
     div.addEventListener('click', (e) => {
       if (e.target.closest('.technique-delete')) return;
       toggleTechnique(idx);
     });
 
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteTechnique(idx);
-    });
+    const deleteBtn = div.querySelector('.technique-delete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteTechnique(idx);
+      });
+    }
 
     container.appendChild(div);
   });
 }
 
 function toggleTechnique(idx) {
+  if (!state.techniques[idx]) return;
+
   state.techniques[idx].mastered = !state.techniques[idx].mastered;
   const status = state.techniques[idx].mastered ? 'maîtrisée' : 'non maîtrisée';
   addHistory('tech', `${state.techniques[idx].name} marquée ${status}`);
@@ -660,9 +837,21 @@ function toggleTechnique(idx) {
 }
 
 function deleteTechnique(idx) {
+  if (!state.techniques[idx]) return;
+  if (state.techniques[idx].locked) return;
+
   const name = state.techniques[idx].name;
   state.techniques.splice(idx, 1);
+
+  if (state.techniqueFilter !== 'Toutes') {
+    const categories = getTechniqueCategories();
+    if (!categories.includes(state.techniqueFilter)) {
+      state.techniqueFilter = 'Toutes';
+    }
+  }
+
   addHistory('tech', `Technique supprimée : ${name}`);
+  renderTechniqueFilters();
   renderTechniques();
   renderHistory();
   scheduleRemoteSync();
@@ -778,8 +967,6 @@ async function handleRegister() {
 
   const email = pseudoToEmail(pseudo);
 
-  console.log('REGISTER START', email);
-
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
@@ -787,8 +974,6 @@ async function handleRegister() {
       data: { pseudo },
     },
   });
-
-  console.log('REGISTER RESULT', data, error);
 
   if (error) {
     showError(regErrorEl, error.message || 'Inscription impossible.');
@@ -802,6 +987,7 @@ async function handleRegister() {
     return;
   }
 
+  console.log('REGISTER RESULT', data);
   showToast(`Compte créé. Bienvenue, ${pseudo} !`);
   closeModal('auth-modal');
 }
@@ -824,14 +1010,10 @@ async function handleLogin() {
 
   const email = pseudoToEmail(pseudo);
 
-  console.log('LOGIN START', email);
-
   const { error } = await supabaseClient.auth.signInWithPassword({
     email,
     password,
   });
-
-  console.log('LOGIN RESULT', error);
 
   if (error) {
     showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
@@ -850,6 +1032,7 @@ async function handleLogout() {
   resetStateToDefaults();
   updateAuthUI();
   renderSkills();
+  renderTechniqueFilters();
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
@@ -863,6 +1046,7 @@ async function applySession(session) {
     if (obsEl) obsEl.value = '';
     updateAuthUI();
     renderSkills();
+    renderTechniqueFilters();
     renderTechniques();
     renderHistory();
     drawRadar('radar-canvas', state.skills);
@@ -904,26 +1088,17 @@ async function handleInstallApp() {
   installBtn?.classList.add('hidden');
 }
 
-function hideLoadingScreen() {
-  if (!loadingScreen) return;
-  loadingScreen.classList.add('hidden');
-
-  setTimeout(() => {
-    loadingScreen.remove();
-  }, 500);
-}
-
 // ── INIT ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  injectDynamicStyles();
+  ensureTechniqueFiltersContainer();
+  ensureFormesOption();
+
   renderSkills();
+  renderTechniqueFilters();
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
-
-  const splashMaxDuration = 1500;
-    setTimeout(() => {
-    hideLoadingScreen();
- }, splashMaxDuration);
 
   if (obsEl) obsEl.value = state.observations || '';
 
@@ -978,8 +1153,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    state.techniques.push({ name, category: cat, mastered: false });
+    state.techniques.push({
+      name,
+      category: cat,
+      mastered: false,
+      locked: false,
+    });
+
+    state.techniqueFilter = cat;
     addHistory('tech', `Nouvelle technique ajoutée : ${name}`);
+    renderTechniqueFilters();
     renderTechniques();
     renderHistory();
     scheduleRemoteSync();
