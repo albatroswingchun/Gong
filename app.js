@@ -888,8 +888,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 /*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Gong/sw.js')
+    navigator.serviceWorker.register('/Gong/service-worker.js')
       .then(r => console.log('[Gōng] SW enregistré', r.scope))
       .catch(e => console.warn('[Gōng] SW erreur', e));
   });
 }
+*/
