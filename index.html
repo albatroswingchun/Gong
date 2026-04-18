@@ -14,7 +14,7 @@
   <title>Gōng — Profil Martial</title>
 </head>
 <body>
-  
+
   <div id="app">
 
     <header id="main-header">
@@ -55,7 +55,7 @@
 
       <section id="tab-profil" class="tab-section active">
         <div class="radar-container">
-          <canvas id="radar-canvas" width="340" height="340"></canvas>
+          <canvas id="radar-canvas" width="420" height="420"></canvas>
         </div>
         <div class="skills-list" id="skills-list"></div>
         <div class="observations-block">
@@ -108,7 +108,7 @@
         <div id="community-list" class="community-list"></div>
         <div id="compare-radar-container" class="compare-radar hidden">
           <h3 id="compare-title"></h3>
-          <canvas id="compare-canvas" width="340" height="340"></canvas>
+          <canvas id="compare-canvas" width="420" height="420"></canvas>
           <button id="close-compare" class="btn-close">✕ Fermer</button>
         </div>
       </section>
@@ -127,7 +127,6 @@
 
       <div id="modal-login" class="modal-form">
         <input type="text" id="login-pseudo" placeholder="Pseudo" autocomplete="username" />
-        <input type="email" id="login-email" placeholder="Email" autocomplete="email" />
         <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password" />
         <button id="login-btn" class="btn-primary">Se connecter</button>
         <p id="login-error" class="form-error hidden"></p>
@@ -135,7 +134,6 @@
 
       <div id="modal-register" class="modal-form hidden">
         <input type="text" id="reg-pseudo" placeholder="Pseudo" autocomplete="username" />
-        <input type="email" id="reg-email" placeholder="Email" autocomplete="email" />
         <input type="password" id="reg-password" placeholder="Mot de passe" autocomplete="new-password" />
         <button id="register-btn" class="btn-primary">Créer mon compte</button>
         <p id="reg-error" class="form-error hidden"></p>
@@ -157,11 +155,14 @@
         <option value="Esquive">Esquive / Déplacement</option>
         <option value="Garde">Garde / Position</option>
         <option value="Wing Chun">Wing Chun</option>
+        <option value="Formes">Formes</option>
         <option value="Autre">Autre</option>
       </select>
       <button id="add-technique-confirm" class="btn-primary">Ajouter</button>
     </div>
   </div>
+
+  <button id="install-btn" class="install-btn hidden" type="button">Installer</button>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -169,6 +170,5 @@
     window.GONG_SUPABASE_ANON_KEY = "sb_publishable_rMjbe5cqYL9s6vT9B_qzlA_Rd4SuEZK";
   </script>
   <script src="app.js"></script>
-  <button id="install-btn" class="install-btn hidden" type="button">Installer</button>
 </body>
 </html>
