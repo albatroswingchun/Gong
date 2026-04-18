@@ -91,11 +91,13 @@ const userDisplay = document.getElementById('user-display');
 const modalCloseBtn = document.getElementById('modal-close-btn');
 
 const loginPseudoEl = document.getElementById('login-pseudo');
+const loginEmailEl = document.getElementById('login-email');
 const loginPasswordEl = document.getElementById('login-password');
 const loginBtnEl = document.getElementById('login-btn');
 const loginErrorEl = document.getElementById('login-error');
 
 const regPseudoEl = document.getElementById('reg-pseudo');
+const regEmailEl = document.getElementById('reg-email');
 const regPasswordEl = document.getElementById('reg-password');
 const registerBtnEl = document.getElementById('register-btn');
 const regErrorEl = document.getElementById('reg-error');
@@ -152,12 +154,12 @@ function normalizePseudo(pseudo) {
     .replace(/[^a-z0-9._-]/g, '');
 }
 
-function pseudoToEmail(pseudo) {
-  return `${normalizePseudo(pseudo)}@gong.app`;
-}
-
 function safePseudoFromEmail(email) {
   return String(email || '').split('@')[0] || '';
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
 }
 
 function showError(el, msg) {
@@ -213,6 +215,10 @@ function localStateKey(userId) {
 function isNetworkFetchError(error) {
   const msg = String(error?.message || '').toLowerCase();
   return msg.includes('failed to fetch') || msg.includes('network') || msg.includes('fetch');
+}
+
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function addHistory(type, desc) {
@@ -659,20 +665,20 @@ function renderTechniques() {
   container.innerHTML = '';
 
   if (!state.techniques.length) {
-    container.innerHTML = '<p style="color:var(--text-3);font-size:.88rem;text-align:center;padding:30px 0">Aucune technique. Appuyez sur + pour en ajouter.</p>';
+    container.innerHTML = '<p class="techniques-empty">Aucune technique. Appuyez sur + pour en ajouter.</p>';
     return;
   }
 
   state.techniques.forEach((tech, idx) => {
     const div = document.createElement('div');
-    div.className = 'technique-item';
+    div.className = `technique-item ${tech.mastered ? 'is-mastered' : ''}`;
     div.innerHTML = `
-      <div class="technique-check ${tech.mastered ? 'mastered' : ''}" data-idx="${idx}"></div>
-      <div class="technique-info">
-        <div class="technique-name">${tech.name}</div>
-        <div class="technique-category">${tech.category}</div>
-      </div>
       <button class="technique-delete" data-idx="${idx}" title="Supprimer">✕</button>
+      <div class="technique-category">${tech.category}</div>
+      <div class="technique-name">${tech.name}</div>
+      <button class="technique-check ${tech.mastered ? 'mastered' : ''}" data-idx="${idx}">
+        ${tech.mastered ? '✓ Maîtrisée' : 'Marquer maîtrisée'}
+      </button>
     `;
 
     div.querySelector('.technique-check').addEventListener('click', () => toggleTechnique(idx));
@@ -756,15 +762,72 @@ function showComparison(other) {
   drawRadar('compare-canvas', state.skills, other.skills);
 }
 
+async function linkLocalAccountToSupabase(pseudo, email, password) {
+  if (!supabaseClient || !state.user || state.user.provider !== 'local') return false;
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return false;
+  const localSnapshot = {
+    skills: deepClone(state.skills),
+    techniques: deepClone(state.techniques),
+    history: deepClone(state.history),
+    observations: state.observations
+  };
+
+  let signIn = await supabaseClient.auth.signInWithPassword({ email: normalizedEmail, password });
+  if (signIn.error) {
+    if (isNetworkFetchError(signIn.error)) return false;
+
+    const signUp = await supabaseClient.auth.signUp({
+      email: normalizedEmail,
+      password,
+      options: { data: { pseudo } }
+    });
+
+    if (signUp.error && !String(signUp.error.message || '').toLowerCase().includes('already')) {
+      return false;
+    }
+
+    signIn = await supabaseClient.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (signIn.error) return false;
+  }
+
+  const session = signIn.data?.session;
+  const user = session?.user;
+  if (!user) return false;
+
+  state.user = {
+    id: user.id,
+    pseudo: user.user_metadata?.pseudo || pseudo,
+    email: user.email,
+    provider: 'supabase'
+  };
+
+  state.skills = normalizeSkills(localSnapshot.skills);
+  state.techniques = normalizeTechniques(localSnapshot.techniques);
+  state.history = Array.isArray(localSnapshot.history) ? localSnapshot.history : [];
+  state.observations = typeof localSnapshot.observations === 'string' ? localSnapshot.observations : '';
+  if (obsEl) obsEl.value = state.observations;
+
+  updateAuthUI();
+  renderSkills();
+  renderTechniques();
+  renderHistory();
+  drawRadar('radar-canvas', state.skills);
+  await syncRemoteUserState();
+  showToast('Compte cloud synchronisé.');
+  return true;
+}
+
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 async function handleRegister() {
   hideError(regErrorEl);
 
   const pseudo = regPseudoEl.value.trim();
+  const email = normalizeEmail(regEmailEl.value);
   const password = regPasswordEl.value;
 
-  if (!pseudo || !password) {
-    showError(regErrorEl, 'Pseudo et mot de passe requis.');
+  if (!pseudo || !email || !password) {
+    showError(regErrorEl, 'Pseudo, email et mot de passe requis.');
     return;
   }
 
@@ -778,16 +841,20 @@ async function handleRegister() {
     return;
   }
 
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showError(regErrorEl, 'Email invalide.');
+    return;
+  }
+
   const normalized = normalizePseudo(pseudo);
   const accounts = getLocalAccounts();
-  const localExists = accounts.some(a => a.pseudoNormalized === normalized);
+  const localExists = accounts.some(a => a.emailNormalized === email);
   if (localExists) {
-    showError(regErrorEl, 'Ce pseudo existe déjà en mode local.');
+    showError(regErrorEl, 'Cet email existe déjà en mode local.');
     return;
   }
 
   if (supabaseClient) {
-    const email = pseudoToEmail(pseudo);
     const { error } = await supabaseClient.auth.signUp({
       email,
       password,
@@ -814,9 +881,11 @@ async function handleRegister() {
   }
 
   const localUser = {
-    id: `local-${normalized}`,
+    id: `local-${normalized}-${email.replace(/[^a-z0-9]/g, '')}`,
     pseudo,
     pseudoNormalized: normalized,
+    email,
+    emailNormalized: email,
     password,
     created_at: new Date().toISOString(),
   };
@@ -825,7 +894,7 @@ async function handleRegister() {
   state.user = {
     id: localUser.id,
     pseudo: localUser.pseudo,
-    email: pseudoToEmail(localUser.pseudo),
+    email: localUser.email,
     provider: 'local'
   };
   resetStateToDefaults();
@@ -834,21 +903,27 @@ async function handleRegister() {
   syncLocalUserState();
   showToast(`Compte local créé. Bienvenue, ${pseudo} !`);
   closeModal('auth-modal');
+  linkLocalAccountToSupabase(pseudo, email, password);
 }
 
 async function handleLogin() {
   hideError(loginErrorEl);
 
   const pseudo = loginPseudoEl.value.trim();
+  const email = normalizeEmail(loginEmailEl.value);
   const password = loginPasswordEl.value;
 
-  if (!pseudo || !password) {
-    showError(loginErrorEl, 'Pseudo et mot de passe requis.');
+  if (!email || !password) {
+    showError(loginErrorEl, 'Email et mot de passe requis.');
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showError(loginErrorEl, 'Email invalide.');
     return;
   }
 
   if (supabaseClient) {
-    const email = pseudoToEmail(pseudo);
     const { error } = await supabaseClient.auth.signInWithPassword({
       email,
       password
@@ -866,17 +941,16 @@ async function handleLogin() {
     }
   }
 
-  const normalized = normalizePseudo(pseudo);
-  const account = getLocalAccounts().find(a => a.pseudoNormalized === normalized && a.password === password);
+  const account = getLocalAccounts().find(a => a.emailNormalized === email && a.password === password);
   if (!account) {
-    showError(loginErrorEl, 'Connexion impossible (vérifiez le pseudo, mot de passe, ou réseau Supabase).');
+    showError(loginErrorEl, 'Connexion impossible (vérifiez email, mot de passe, ou réseau Supabase).');
     return;
   }
 
   state.user = {
     id: account.id,
     pseudo: account.pseudo,
-    email: pseudoToEmail(account.pseudo),
+    email: account.email || email,
     provider: 'local'
   };
   resetStateToDefaults();
@@ -886,6 +960,7 @@ async function handleLogin() {
   isInitialLoading = false;
   closeModal('auth-modal');
   showToast(`Bienvenue (mode local), ${account.pseudo} !`);
+  linkLocalAccountToSupabase(account.pseudo, email, password);
 }
 
 async function handleLogout() {
