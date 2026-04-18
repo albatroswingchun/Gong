@@ -176,23 +176,13 @@ function injectDynamicStyles() {
     .technique-filter-btn:hover { border-color:rgba(255,208,0,0.28); color:#f0f0f0; }
     .technique-filter-btn.active { background:rgba(255,208,0,0.12); color:#ffd000; border-color:rgba(255,208,0,0.3); box-shadow:0 0 0 1px rgba(255,208,0,0.08) inset; }
     .technique-item.locked .technique-delete { display:none !important; }
-    .compare-forms { margin-top:22px; display:grid; gap:10px; }
-    .compare-forms-header, .compare-form-row { display:grid; grid-template-columns:minmax(0,1.6fr) 110px 110px; gap:12px; align-items:center; }
-    .compare-forms-header { color:rgba(255,255,255,0.6); font-size:0.8rem; letter-spacing:0.04em; text-transform:uppercase; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08); }
-    .compare-form-row { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:12px 14px; }
-    .compare-form-name { color:#f4f4f4; font-weight:600; font-size:0.92rem; }
-    .compare-form-status { display:inline-flex; justify-content:center; align-items:center; min-height:36px; border-radius:999px; font-size:0.82rem; font-weight:700; letter-spacing:0.02em; padding:0 12px; text-align:center; }
-    .compare-form-status.ok { background:rgba(255,208,0,0.14); border:1px solid rgba(255,208,0,0.25); color:#ffd000; }
-    .compare-form-status.no { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:rgba(255,255,255,0.65); }
     .community-item { display:flex; justify-content:space-between; gap:16px; align-items:center; }
     .community-item-main { display:flex; flex-direction:column; gap:6px; }
-    .community-stats { display:flex; flex-wrap:wrap; gap:12px; }
-    .forms-count { font-weight:700; color:#ffd000; }
-    @media (max-width:640px) {
-      .compare-forms-header, .compare-form-row { grid-template-columns:minmax(0,1fr); }
-      .compare-forms-header { display:none; }
-      .compare-form-row { gap:8px; }
-    }
+    .community-stats { display:flex; flex-wrap:wrap; gap:14px; }
+    .community-stat-label { color:rgba(255,255,255,0.82); }
+    .community-stat-value { color:#ffd000; font-weight:700; }
+    .forms-count { color:#ffd000; font-weight:700; }
+    .compare-forms { display:none !important; }
   `;
   document.head.appendChild(style);
 }
@@ -478,8 +468,11 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.font = '600 11px Barlow, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = colorStr(skills[i].value);
+    ctx.fillStyle = 'rgba(255,255,255,0.74)';
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 6;
     ctx.fillText(skills[i].name.toUpperCase(), x, y);
+    ctx.shadowBlur = 0;
   }
   ctx.beginPath();
   ctx.arc(cx, cy, 3, 0, Math.PI * 2);
@@ -659,29 +652,9 @@ function renderHistory() {
   `).join('');
 }
 
-function renderFormsComparison(otherPseudo, otherTechniques) {
+function renderFormsComparison() {
   if (!compareFormsEl) return;
-  const myForms = getFormsSummary(state.techniques).forms;
-  const otherForms = getFormsSummary(otherTechniques).forms;
-  const otherMap = new Map(otherForms.map((form) => [form.name, !!form.mastered]));
-  compareFormsEl.innerHTML = `
-    <div class="compare-forms-header">
-      <div>Forme</div>
-      <div>Vous</div>
-      <div>${otherPseudo}</div>
-    </div>
-    ${myForms.map((form) => {
-      const mine = !!form.mastered;
-      const theirs = !!otherMap.get(form.name);
-      return `
-        <div class="compare-form-row">
-          <div class="compare-form-name">${form.name}</div>
-          <div class="compare-form-status ${mine ? 'ok' : 'no'}">${mine ? 'Validée' : 'Non validée'}</div>
-          <div class="compare-form-status ${theirs ? 'ok' : 'no'}">${theirs ? 'Validée' : 'Non validée'}</div>
-        </div>
-      `;
-    }).join('')}
-  `;
+  compareFormsEl.innerHTML = '';
 }
 
 async function renderCommunity() {
@@ -712,8 +685,8 @@ async function renderCommunity() {
         <div class="community-item-main">
           <div class="community-pseudo">${user.pseudo}</div>
           <div class="community-stats">
-            <span>Moyenne : ${avg}/10</span>
-            <span class="forms-count">Formes : ${formsSummary.display}</span>
+            <span class="community-stat"><span class="community-stat-label">Moyenne :</span> <span class="community-stat-value">${avg}/10</span></span>
+            <span class="community-stat"><span class="community-stat-label">Formes :</span> <span class="community-stat-value forms-count">${formsSummary.display}</span></span>
           </div>
         </div>
         <button class="btn-compare" data-id="${user.id}">Comparer</button>
@@ -731,12 +704,10 @@ async function renderCommunity() {
 
 function showComparison(other) {
   const title = document.getElementById('compare-title');
-  const myFormsSummary = getFormsSummary(state.techniques);
-  const otherFormsSummary = getFormsSummary(other.techniques);
-  if (title) title.textContent = `Vous vs ${other.pseudo} — Formes ${myFormsSummary.display} / ${otherFormsSummary.display}`;
+  if (title) title.textContent = `Vous vs ${other.pseudo}`;
   if (compareRadarContainer) compareRadarContainer.classList.remove('hidden');
   drawRadar('compare-canvas', state.skills, other.skills);
-  renderFormsComparison(other.pseudo, other.techniques);
+  renderFormsComparison();
 }
 
 async function handleRegister() {
@@ -838,7 +809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   authBtn?.addEventListener('click', () => { if (state.user) handleLogout(); else openModal('auth-modal'); });
   modalCloseBtn?.addEventListener('click', () => closeModal('auth-modal'));
   techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
-  if (closeCompareBtn) closeCompareBtn.addEventListener('click', () => { compareRadarContainer?.classList.add('hidden'); if (compareFormsEl) compareFormsEl.innerHTML = ''; });
+  if (closeCompareBtn) closeCompareBtn.addEventListener('click', () => { compareRadarContainer?.classList.add('hidden'); renderFormsComparison(); });
   loginBtnEl?.addEventListener('click', handleLogin);
   registerBtnEl?.addEventListener('click', handleRegister);
   installBtn?.addEventListener('click', handleInstallApp);
