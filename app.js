@@ -600,11 +600,12 @@ async function ensureRemoteRow() {
   };
 
   const publicPayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    updated_at: isoNow,
-  };
+     id: state.user.id,
+     pseudo: state.user.pseudo,
+     skills: state.skills,
+     techniques: state.techniques,
+     updated_at: isoNow,
+   };
 
   const { error: privateError } = await supabaseClient
     .from('gong_users')
@@ -674,11 +675,12 @@ async function syncRemoteUserState() {
   };
 
   const publicPayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    updated_at: isoNow,
-  };
+     id: state.user.id,
+     pseudo: state.user.pseudo,
+     skills: state.skills,
+     techniques: state.techniques,
+     updated_at: isoNow,
+   };
 
   const { error: privateError } = await supabaseClient
     .from('gong_users')
