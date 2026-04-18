@@ -873,16 +873,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast(`"${name}" ajoutée`);
   });
 
-  if (supabaseClient) {
-    await verifySupabaseConnection();
+ if (supabaseClient) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  await applySession(session);
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     await applySession(session);
-
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-      await applySession(session);
-    });
-  }
+  });
+}
 });
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
