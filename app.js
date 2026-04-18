@@ -913,13 +913,18 @@ async function renderCommunity() {
       ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1)
       : '0';
 
-    const forms = Array.isArray(user.techniques)
-      ? user.techniques.filter(t => t.category === 'Formes')
-      : [];
+    const DEFAULT_FORMS_TOTAL = DEFAULT_TECHNIQUES.filter(t => t.category === 'Formes').length;
 
-    const formsValidated = forms.filter(t => t.mastered).length;
-    const formsTotal = forms.length;
-    const formsDisplay = formsTotal > 0 ? `${formsValidated}/${formsTotal}` : '-';
+   const forms = Array.isArray(user.techniques)
+     ? user.techniques.filter(t => t.category === 'Formes')
+     : [];
+
+   const formsValidated = forms.filter(t => t.mastered).length;
+
+   // si aucune donnée → on prend le total par défaut
+   const formsTotal = forms.length || DEFAULT_FORMS_TOTAL;
+
+   const formsDisplay = `${formsValidated}/${formsTotal}`;
 
     return `
       <div class="community-item">
