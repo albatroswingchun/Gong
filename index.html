@@ -16,13 +16,13 @@
 <body>
 
   <div id="loading-screen" class="loading-screen">
-  <div class="loading-inner">
-    <div class="loading-logo-wrap">
-      <span class="loading-logo-char">功</span>
-      <span class="loading-logo-text">GŌNG</span>
+    <div class="loading-inner">
+      <div class="loading-logo-wrap">
+        <span class="loading-logo-char">功</span>
+        <span class="loading-logo-text">GŌNG</span>
+      </div>
     </div>
   </div>
-</div>
 
   <div id="app">
 
@@ -113,11 +113,12 @@
 
       <section id="tab-communaute" class="tab-section">
         <h2>Communauté</h2>
-        <p class="community-intro">Comparez votre diagramme avec d'autres pratiquants.</p>
+        <p class="community-intro">Comparez votre diagramme avec d'autres pratiquants et visualisez les formes validées.</p>
         <div id="community-list" class="community-list"></div>
         <div id="compare-radar-container" class="compare-radar hidden">
           <h3 id="compare-title"></h3>
           <canvas id="compare-canvas" width="420" height="420"></canvas>
+          <div id="compare-forms" class="compare-forms"></div>
           <button id="close-compare" class="btn-close">✕ Fermer</button>
         </div>
       </section>
