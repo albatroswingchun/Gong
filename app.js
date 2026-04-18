@@ -715,6 +715,70 @@ textarea::placeholder { color: var(--text-3); }
   margin-bottom: 12px;
 }
 
+.compare-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.compare-radar-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.compare-forms-wrap {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: left;
+}
+
+.compare-forms-title {
+  font-family: var(--font-title);
+  font-size: .85rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-1);
+  margin-bottom: 12px;
+}
+
+.compare-forms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compare-form-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-2);
+  font-size: .84rem;
+}
+
+.compare-form-item.mastered {
+  color: var(--text-0);
+}
+
+.compare-form-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  flex-shrink: 0;
+}
+
+.compare-form-item.mastered .compare-form-dot {
+  background: var(--yellow-0);
+  box-shadow: 0 0 10px rgba(255,208,0,0.35);
+}
+
+.compare-form-name {
+  line-height: 1.35;
+}
+
 .btn-close {
   margin-top: 12px;
   background: none;
@@ -908,6 +972,12 @@ select option { background: var(--bg-2); }
   @keyframes fadeIn {
     from { opacity: 0; transform: scale(.97); }
     to   { opacity: 1; transform: scale(1); }
+  }
+}
+
+@media (min-width: 900px) {
+  .compare-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
   }
 }
 
