@@ -354,8 +354,8 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.closePath();
-    ctx.strokeStyle = l === levels ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = l === levels ? 1.5 : 1;
+    ctx.strokeStyle = l === levels ? 'rgba(220,220,220,0.35)' : 'rgba(210,210,210,0.18)';
+    ctx.lineWidth = l === levels ? 1.8 : 1.2;
     ctx.stroke();
   }
 
@@ -364,8 +364,8 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle));
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(220,220,220,0.22)';
+    ctx.lineWidth = 1.1;
     ctx.stroke();
   }
 
@@ -406,9 +406,9 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
 
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = colorStr(val);
+    ctx.fillStyle = '#ffd000';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -431,7 +431,7 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.font = '600 11px Barlow, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = skills[i].name === 'Coordination' ? '#f1f1f1' : colorStr(skills[i].value);
+    ctx.fillStyle = skills[i].name === 'Coordination' ? '#f1f1f1' : '#cfcfcf';
     const label = skills[i].name === 'Coordination' ? 'Coord.' : skills[i].name.toUpperCase();
     ctx.fillText(label, x, y);
   }
