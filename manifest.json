@@ -1,8 +1,10 @@
 {
+  "id": "/Gong/",
   "name": "Gōng — Arts Martiaux",
   "short_name": "Gōng",
   "description": "Suivi de progression en arts martiaux",
-  "start_url": "/",
+  "start_url": "/Gong/",
+  "scope": "/Gong/",
   "display": "standalone",
   "background_color": "#080808",
   "theme_color": "#0a0a0a",
