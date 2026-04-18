@@ -1,12 +1,12 @@
-const CACHE_NAME = 'gong-cache-v1';
+const CACHE_NAME = 'gong-cache-v2';
 const APP_SHELL = [
   '/Gong/',
   '/Gong/index.html',
   '/Gong/style.css',
   '/Gong/app.js',
   '/Gong/manifest.json',
-  '/Gong/icons/icon-192.png',
-  '/Gong/icons/icon-512.png'
+  '/Gong/icons/icon-192.svg',
+  '/Gong/icons/icon-512.svg'
 ];
 
 self.addEventListener('install', (event) => {
