@@ -59,55 +59,27 @@ Pour une vraie synchronisation multi-appareils, connectez un backend (Firebase, 
 Dans **SQL Editor**, exécutez :
 
 ```sql
-create table if not exists profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  pseudo text unique not null,
-  created_at timestamptz default now()
-);
-
-create table if not exists user_state (
-  id bigserial primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
+create table if not exists gong_users (
+  pseudo text primary key,
   skills jsonb not null default '[]'::jsonb,
   techniques jsonb not null default '[]'::jsonb,
   history jsonb not null default '[]'::jsonb,
   observations text not null default '',
-  updated_at timestamptz default now(),
-  unique(user_id)
+  updated_at timestamptz default now()
 );
 ```
 
 ### 3) Activer la sécurité (RLS)
 
 ```sql
-alter table profiles enable row level security;
-alter table user_state enable row level security;
+alter table gong_users enable row level security;
 
-create policy "profiles_select_own"
-on profiles for select
-using (auth.uid() = id);
-
-create policy "profiles_insert_own"
-on profiles for insert
-with check (auth.uid() = id);
-
-create policy "profiles_update_own"
-on profiles for update
-using (auth.uid() = id)
-with check (auth.uid() = id);
-
-create policy "state_select_own"
-on user_state for select
-using (auth.uid() = user_id);
-
-create policy "state_insert_own"
-on user_state for insert
-with check (auth.uid() = user_id);
-
-create policy "state_update_own"
-on user_state for update
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+-- Exemple simple (dev): autoriser lecture/écriture à tous les utilisateurs anonymes.
+-- IMPORTANT: pour la prod, remplacez par des policies strictes basées sur auth.uid().
+create policy "gong_users_public_rw"
+on gong_users for all
+using (true)
+with check (true);
 ```
 
 ### 4) Ajouter le client Supabase dans `index.html`
@@ -118,36 +90,34 @@ Avant `app.js` :
 ```
 
 ### 5) Initialiser Supabase dans `app.js`
-Ajoutez en haut du fichier :
+L'app lit automatiquement ces variables globales :
 
 ```js
-const SUPABASE_URL = 'https://<project-ref>.supabase.co';
-const SUPABASE_ANON_KEY = '<your-anon-key>';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.GONG_SUPABASE_URL = 'https://<project-ref>.supabase.co';
+window.GONG_SUPABASE_ANON_KEY = '<your-anon-key>';
 ```
 
-### 6) Remplacer l'auth locale (progressivement)
-- Inscription : `sb.auth.signUp({ email, password })`
-- Connexion : `sb.auth.signInWithPassword({ email, password })`
-- Déconnexion : `sb.auth.signOut()`
-- Session courante : `sb.auth.getSession()`
+### 6) Comportement déjà branché dans l'app
+- Au login local: tentative de chargement distant par `pseudo`.
+- À chaque changement: sauvegarde locale + sync distante asynchrone (`upsert`).
+- Si Supabase n'est pas configuré: l'app reste 100% locale.
 
 ### 7) Sauvegarder/charger l'état utilisateur
-- Chargement au login : lire `user_state` via `select`.
-- Sauvegarde après modification : `upsert` sur `user_state`.
+- Chargement au login : `select` sur `gong_users`.
+- Sauvegarde après modification : `upsert` sur `gong_users`.
 
 Exemple de sauvegarde :
 
 ```js
 async function saveRemoteState(userId, state) {
-  await sb.from('user_state').upsert({
-    user_id: userId,
+  await sb.from('gong_users').upsert({
+    pseudo: userId,
     skills: state.skills,
     techniques: state.techniques,
     history: state.history,
     observations: state.observations,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
+  }, { onConflict: 'pseudo' });
 }
 ```
 

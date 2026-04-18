@@ -42,6 +42,16 @@ const DEFAULT_TECHNIQUES = [
   { name: 'Qan Sao', category: 'Wing Chun', mastered: false },
 ];
 
+const SUPABASE_URL = window.GONG_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = window.GONG_SUPABASE_ANON_KEY || '';
+const SUPABASE_TABLE = 'gong_users';
+const supabaseClient = (
+  window.supabase &&
+  SUPABASE_URL &&
+  SUPABASE_ANON_KEY
+) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let remoteSyncTimer = null;
+
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
@@ -69,6 +79,58 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem('gong_state', JSON.stringify(state));
+  scheduleRemoteSync();
+}
+
+function isSupabaseReady() {
+  return !!(supabaseClient && state.user?.pseudo);
+}
+
+async function loadRemoteUserState(pseudo) {
+  if (!supabaseClient || !pseudo) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from(SUPABASE_TABLE)
+      .select('skills, techniques, history, observations')
+      .eq('pseudo', pseudo)
+      .maybeSingle();
+    if (error || !data) return;
+    if (Array.isArray(data.skills) && data.skills.length) state.skills = data.skills;
+    if (Array.isArray(data.techniques) && data.techniques.length) state.techniques = data.techniques;
+    if (Array.isArray(data.history)) state.history = data.history;
+    if (typeof data.observations === 'string') state.observations = data.observations;
+    saveState();
+  } catch (e) {
+    console.warn('[Gōng] Supabase load error', e);
+  }
+}
+
+async function syncRemoteUserState() {
+  if (!isSupabaseReady()) return;
+  try {
+    const payload = {
+      pseudo: state.user.pseudo,
+      skills: state.skills,
+      techniques: state.techniques,
+      history: state.history,
+      observations: state.observations,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabaseClient
+      .from(SUPABASE_TABLE)
+      .upsert(payload, { onConflict: 'pseudo' });
+    if (error) console.warn('[Gōng] Supabase sync error', error);
+  } catch (e) {
+    console.warn('[Gōng] Supabase sync exception', e);
+  }
+}
+
+function scheduleRemoteSync() {
+  if (!isSupabaseReady()) return;
+  if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
+  remoteSyncTimer = setTimeout(() => {
+    syncRemoteUserState();
+  }, 600);
 }
 
 // ── SIMPLE HASH (non-cryptographic, pour démo locale) ───────────────────────
@@ -527,6 +589,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSkills();
     drawRadar('radar-canvas', state.skills);
     obsEl.value = state.observations || '';
+    await loadRemoteUserState(pseudo);
+    renderSkills();
+    drawRadar('radar-canvas', state.skills);
+    obsEl.value = state.observations || '';
     showToast(`Bienvenue, ${pseudo} !`);
   });
 
@@ -560,6 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSkills();
     drawRadar('radar-canvas', state.skills);
     obsEl.value = '';
+    scheduleRemoteSync();
     showToast(`Compte créé. Bienvenue, ${pseudo} !`);
   });
 
