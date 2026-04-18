@@ -2,7 +2,7 @@
    GŌNG — Service Worker (PWA)
 ═══════════════════════════════════════════ */
 
-const CACHE_NAME = 'gong-v2';
+const CACHE_NAME = 'gong-v3';
 
 const ASSETS = [
   '/Gong/',
@@ -10,6 +10,7 @@ const ASSETS = [
   '/Gong/style.css',
   '/Gong/app.js',
   '/Gong/manifest.json',
+  '/Gong/icons/icon-192.png'
 ];
 
 self.addEventListener('install', event => {
@@ -35,7 +36,6 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Ne pas mettre en cache Supabase
   if (url.origin.includes('supabase.co')) {
     return;
   }
