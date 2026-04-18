@@ -1,1215 +1,937 @@
 /* ═══════════════════════════════════════════
-   GŌNG — Arts Martiaux · App Logic (Supabase)
+   GŌNG — Arts Martiaux · Style
+   Palette : nuances de gris / noir + jaune
 ═══════════════════════════════════════════ */
 
-'use strict';
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@500;700&display=swap');
 
-// ── CONFIG ───────────────────────────────────────────────────────────────────
-const SUPABASE_URL = window.GONG_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = window.GONG_SUPABASE_ANON_KEY || '';
+:root {
+  --bg-0:      #080808;
+  --bg-1:      #111111;
+  --bg-2:      #1a1a1a;
+  --bg-3:      #242424;
+  --bg-4:      #2e2e2e;
+  --border:    #333333;
+  --text-0:    #f0f0f0;
+  --text-1:    #b0b0b0;
+  --text-2:    #707070;
+  --text-3:    #444444;
 
-if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('[Gōng] Supabase non configuré.');
+  --yellow-0:  #ffd000;   /* 10 — jaune vif */
+  --yellow-1:  #e8b520;
+  --yellow-2:  #c99010;
+  --yellow-3:  #a07008;
+  --yellow-4:  #7a5205;
+  --yellow-5:  #4a3202;   /* bas de l'échelle */
+
+  --radar-fill:   rgba(255, 208, 0, 0.12);
+  --radar-stroke: rgba(255, 208, 0, 0.75);
+  --radar-grid:   rgba(255,255,255,0.06);
+  --radar-axis:   rgba(255,255,255,0.12);
+
+  --header-h:  56px;
+  --nav-h:     58px;
+  --radius:    10px;
+  --radius-sm: 6px;
+  --transition: 200ms cubic-bezier(.4,0,.2,1);
+
+  --font-body: 'Inter', 'Barlow', sans-serif;
+  --font-title: 'Cinzel', 'Noto Serif SC', serif;
+  --font-mono: 'JetBrains Mono', 'Share Tech Mono', monospace;
 }
 
-const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storage: window.localStorage,
-      },
-    })
-  : null;
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ── DEFAULT DATA ─────────────────────────────────────────────────────────────
-const DEFAULT_SKILLS = [
-  { id: 'relachement', name: 'Relâchement', value: 0 },
-  { id: 'precision', name: 'Précision', value: 0 },
-  { id: 'structure', name: 'Structure', value: 0 },
-  { id: 'ancrage', name: 'Ancrage', value: 0 },
-  { id: 'vitesse', name: 'Vitesse', value: 0 },
-  { id: 'coordination', name: 'Coordination', value: 0 },
-  { id: 'endurance', name: 'Endurance', value: 0 },
-];
+html { font-size: 15px; scroll-behavior: smooth; }
 
-const DEFAULT_TECHNIQUES = [
-  { name: 'Pak Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Pak Sao Latéral', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Pak Sao Inversé', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Tan Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Bon Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Jut Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Jut Sao Bas', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Jut Sao Intérieur', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Bil Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Fook Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Garn Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Gum Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Fut Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Chuen Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Huen Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Huen Sao Large', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Huen Sao Ouverture', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Wu Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Tarn Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Larp Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Larn Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Quan Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Qan Sao', category: 'Wing Chun', mastered: false, locked: true },
-
-  { name: 'Siu Lim Tao', category: 'Formes', mastered: false, locked: true },
-  { name: 'Chum Kiu', category: 'Formes', mastered: false, locked: true },
-  { name: 'Bil Jee', category: 'Formes', mastered: false, locked: true },
-  { name: 'Siu Lim Tao Avancée', category: 'Formes', mastered: false, locked: true },
-  { name: 'Mannequin de bois - 108 Mouvements', category: 'Formes', mastered: false, locked: true },
-  { name: 'Arme - Couteaux Papillons', category: 'Formes', mastered: false, locked: true },
-  { name: 'Arme - Bâton Long', category: 'Formes', mastered: false, locked: true },
-];
-
-function cloneSkills() {
-  return DEFAULT_SKILLS.map((s) => ({ ...s }));
+body {
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-function cloneTechniques() {
-  return DEFAULT_TECHNIQUES.map((t) => ({ ...t }));
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.45s ease, visibility 0.45s ease;
 }
 
-function techniqueKey(tech) {
-  return `${String(tech.category || '').trim()}::${String(tech.name || '').trim()}`;
+.loading-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
-// ── STATE ────────────────────────────────────────────────────────────────────
-let state = {
-  user: null,
-  skills: cloneSkills(),
-  techniques: cloneTechniques(),
-  history: [],
-  observations: '',
-  techniqueFilter: 'Toutes',
-};
-
-let remoteSyncTimer = null;
-let isInitialLoading = false;
-let deferredInstallPrompt = null;
-
-// ── DOM ──────────────────────────────────────────────────────────────────────
-const obsEl = document.getElementById('observations');
-const authBtn = document.getElementById('auth-btn');
-const userDisplay = document.getElementById('user-display');
-
-const modalCloseBtn = document.getElementById('modal-close-btn');
-
-const loginPseudoEl = document.getElementById('login-pseudo');
-const loginPasswordEl = document.getElementById('login-password');
-const loginBtnEl = document.getElementById('login-btn');
-const loginErrorEl = document.getElementById('login-error');
-
-const regPseudoEl = document.getElementById('reg-pseudo');
-const regPasswordEl = document.getElementById('reg-password');
-const registerBtnEl = document.getElementById('register-btn');
-const regErrorEl = document.getElementById('reg-error');
-
-const saveObsBtn = document.getElementById('save-obs-btn');
-const addTechniqueBtn = document.getElementById('add-technique-btn');
-const techniqueModalClose = document.getElementById('technique-modal-close');
-const addTechniqueConfirm = document.getElementById('add-technique-confirm');
-const newTechniqueName = document.getElementById('new-technique-name');
-const newTechniqueCategory = document.getElementById('new-technique-category');
-
-const compareRadarContainer = document.getElementById('compare-radar-container');
-const closeCompareBtn = document.getElementById('close-compare');
-
-const installBtn = document.getElementById('install-btn');
-
-// ── HELPERS ──────────────────────────────────────────────────────────────────
-function injectDynamicStyles() {
-  if (document.getElementById('gong-dynamic-styles')) return;
-
-  const style = document.createElement('style');
-  style.id = 'gong-dynamic-styles';
-  style.textContent = `
-    .technique-filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 0 0 18px 0;
-    }
-
-    .technique-filter-btn {
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.03);
-      color: rgba(255,255,255,0.78);
-      border-radius: 999px;
-      padding: 8px 14px;
-      font-size: 0.82rem;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      transition: all 0.18s ease;
-    }
-
-    .technique-filter-btn:hover {
-      border-color: rgba(255, 208, 0, 0.28);
-      color: #f0f0f0;
-    }
-
-    .technique-filter-btn.active {
-      background: rgba(255, 208, 0, 0.12);
-      color: #ffd000;
-      border-color: rgba(255, 208, 0, 0.3);
-      box-shadow: 0 0 0 1px rgba(255, 208, 0, 0.08) inset;
-    }
-
-    .technique-item.locked .technique-delete {
-      display: none !important;
-    }
-  `;
-  document.head.appendChild(style);
+.loading-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-function ensureTechniqueFiltersContainer() {
-  if (document.getElementById('technique-filters')) return;
-
-  const techniquesSection = document.getElementById('tab-techniques');
-  const techniquesHeader = techniquesSection?.querySelector('.techniques-header');
-  if (!techniquesSection || !techniquesHeader) return;
-
-  const filters = document.createElement('div');
-  filters.id = 'technique-filters';
-  filters.className = 'technique-filters';
-  techniquesHeader.insertAdjacentElement('afterend', filters);
+.loading-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transform: translateY(0);
+  animation: gongSplashFloat 1.2s ease-in-out infinite;
 }
 
-function ensureFormesOption() {
-  if (!newTechniqueCategory) return;
+.loading-logo-char {
+  font-size: 3.2rem;
+  color: #ffd000;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(255, 208, 0, 0.18);
+}
 
-  const exists = Array.from(newTechniqueCategory.options).some(
-    (opt) => opt.value === 'Formes'
-  );
+.loading-logo-text {
+  font-size: 2rem;
+  letter-spacing: 0.22em;
+  color: #f5f5f5;
+  font-weight: 600;
+}
 
-  if (!exists) {
-    const opt = document.createElement('option');
-    opt.value = 'Formes';
-    opt.textContent = 'Formes';
-    newTechniqueCategory.appendChild(opt);
+@keyframes gongSplashFloat {
+  0% {
+    transform: translateY(0px);
+    opacity: 0.92;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0px);
+    opacity: 0.92;
   }
 }
 
-function getTechniqueCategories() {
-  const seen = new Set();
-  const categories = [];
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-1); }
+::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 2px; }
 
-  state.techniques.forEach((tech) => {
-    const category = String(tech.category || 'Autre').trim() || 'Autre';
-    if (!seen.has(category)) {
-      seen.add(category);
-      categories.push(category);
-    }
-  });
-
-  return categories;
+/* ── HEADER ── */
+#main-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(8,8,8,0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
 }
 
-function renderTechniqueFilters() {
-  ensureTechniqueFiltersContainer();
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  const container = document.getElementById('technique-filters');
-  if (!container) return;
+.logo-char {
+  font-family: 'Noto Serif SC', var(--font-title);
+  font-size: 1.8rem;
+  color: var(--yellow-0);
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(255,208,0,0.4);
+}
 
-  const categories = getTechniqueCategories();
-  const filters = ['Toutes', ...categories];
+.logo-text {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-0);
+}
 
-  if (!filters.includes(state.techniqueFilter)) {
-    state.techniqueFilter = 'Toutes';
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-display {
+  font-size: .85rem;
+  color: var(--yellow-1);
+  font-family: var(--font-mono);
+  letter-spacing: .05em;
+}
+.user-display::before { content: '◉ '; }
+
+.btn-auth {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  cursor: pointer;
+  transition: var(--transition);
+  letter-spacing: .04em;
+}
+.btn-auth:hover { border-color: var(--yellow-0); color: var(--yellow-0); }
+.btn-auth.logged-in { border-color: #444; color: var(--text-2); }
+.btn-auth.logged-in:hover { border-color: #c33; color: #e55; }
+
+/* ── NAV TABS ── */
+#main-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  display: flex;
+  align-items: stretch;
+  background: rgba(8,8,8,0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  z-index: 100;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: .65rem;
+  font-family: var(--font-body);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+
+.tab-btn svg {
+  width: 20px; height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: var(--transition);
+}
+
+.tab-btn.active {
+  color: var(--yellow-0);
+}
+
+.tab-btn.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 2px;
+  background: var(--yellow-0);
+  border-radius: 0 0 2px 2px;
+  box-shadow: 0 0 8px rgba(255,208,0,0.5);
+}
+
+.tab-btn:hover:not(.active) { color: var(--text-1); }
+
+/* ── MAIN CONTENT ── */
+#main-content {
+  margin-top: var(--header-h);
+  margin-bottom: var(--nav-h);
+  padding: 20px 16px 24px;
+  min-height: calc(100dvh - var(--header-h) - var(--nav-h));
+}
+
+.tab-section { display: none; }
+.tab-section.active { display: block; }
+
+/* ── RADAR ── */
+.radar-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 28px;
+  padding-top: 4px;
+}
+
+#radar-canvas, #compare-canvas {
+  display: block;
+  max-width: 100%;
+  filter: drop-shadow(0 0 24px rgba(255,208,0,0.15));
+}
+
+/* ── SKILLS LIST ── */
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.skill-item {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  transition: border-color var(--transition);
+}
+.skill-item:hover { border-color: #444; }
+
+.skill-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.skill-name {
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--text-0);
+}
+
+.skill-value {
+  font-family: var(--font-mono);
+  font-size: .95rem;
+  min-width: 32px;
+  text-align: right;
+  transition: color var(--transition);
+}
+
+.skill-slider-wrap {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  background: var(--track-bg, var(--bg-4));
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--thumb-color, var(--bg-4));
+  border: 2px solid var(--thumb-border, var(--border));
+  box-shadow: 0 0 6px var(--thumb-glow, transparent);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--thumb-color, var(--bg-4));
+  border: 2px solid var(--thumb-border, var(--border));
+  cursor: pointer;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:focus::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px var(--thumb-glow, transparent);
+}
+
+/* ── OBSERVATIONS ── */
+.observations-block {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.observations-block label {
+  display: block;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-0);
+  font-family: var(--font-body);
+  font-size: .9rem;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition);
+}
+textarea:focus { border-color: var(--yellow-3); }
+textarea::placeholder { color: var(--text-3); }
+
+.btn-save {
+  margin-top: 10px;
+  background: var(--bg-4);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: .85rem;
+  cursor: pointer;
+  transition: var(--transition);
+  letter-spacing: .06em;
+}
+.btn-save:hover { background: var(--bg-3); border-color: var(--yellow-3); color: var(--yellow-1); }
+.btn-save.saved { border-color: var(--yellow-0); color: var(--yellow-0); }
+
+/* ── TECHNIQUES ── */
+.techniques-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.techniques-header h2 {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-1);
+}
+
+.btn-icon-add {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--yellow-0);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+}
+.btn-icon-add:hover { background: var(--bg-4); border-color: var(--yellow-0); }
+
+.techniques-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.technique-item {
+  position: relative;
+  min-height: 150px;
+  padding: 14px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.technique-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 208, 0, 0.35);
+  background: rgba(255,255,255,0.05);
+}
+
+.technique-item.mastered {
+  border-color: rgba(255, 208, 0, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 208, 0, 0.12) inset;
+}
+
+.technique-check {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  pointer-events: none;
+}
+
+.technique-item.mastered .technique-check {
+  background: rgba(255, 208, 0, 0.22);
+  border-color: rgba(255, 208, 0, 0.45);
+}
+
+.technique-info {
+  text-align: center;
+  pointer-events: none;
+}
+
+.technique-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.technique-category {
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.technique-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  font-size: 1.1rem;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.technique-delete:hover {
+  color: rgba(255,255,255,0.9);
+}
+
+/* ── HISTORIQUE ── */
+#tab-historique h2,
+#tab-notation h2,
+#tab-communaute h2 {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-1);
+  margin-bottom: 16px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-item {
+  background: var(--bg-2);
+  border-left: 3px solid var(--bg-4);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.history-item.type-skill { border-left-color: var(--yellow-3); }
+.history-item.type-obs   { border-left-color: #555; }
+.history-item.type-tech  { border-left-color: #446; }
+
+.history-date {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: var(--text-2);
+}
+.history-desc {
+  font-size: .85rem;
+  color: var(--text-1);
+}
+
+.history-empty {
+  color: var(--text-3);
+  font-size: .9rem;
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* ── NOTATION ── */
+.notation-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.scale-bar {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.scale-gradient {
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(to right,
+    #2a2a2a,
+    #3a3010,
+    #5a4505,
+    #8a6a00,
+    #c49a00,
+    #ffd000);
+  margin-bottom: 6px;
+}
+
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  color: var(--text-2);
+}
+
+.notation-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.note-badge {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  font-weight: 700;
+}
+
+.notation-item strong {
+  display: block;
+  font-size: .88rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: var(--text-0);
+}
+.notation-item p { font-size: .82rem; color: var(--text-2); margin: 0; }
+
+/* ── COMMUNAUTE ── */
+.community-intro {
+  font-size: .88rem;
+  color: var(--text-2);
+  margin-bottom: 16px;
+}
+
+.community-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.community-item {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.community-pseudo {
+  font-family: var(--font-mono);
+  font-size: .9rem;
+  color: var(--text-0);
+}
+.community-avg {
+  font-size: .78rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+.community-stats {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 5vw, 2cm);
+}
+
+.btn-compare {
+  background: var(--bg-4);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: .78rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-compare:hover { border-color: var(--yellow-3); color: var(--yellow-1); }
+
+.compare-radar {
+  margin-top: 20px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+
+.compare-radar h3 {
+  font-size: .9rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-1);
+  margin-bottom: 12px;
+}
+
+.btn-close {
+  margin-top: 12px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: .82rem;
+  transition: var(--transition);
+}
+.btn-close:hover { border-color: #c44; color: #e55; }
+
+.install-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 1200;
+  border: 1px solid rgba(255, 208, 0, 0.28);
+  background: rgba(20, 20, 20, 0.92);
+  color: #ffd000;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+}
+
+.install-btn.hidden {
+  display: none;
+}
+
+.install-btn:hover {
+  background: rgba(30, 30, 30, 0.98);
+}
+
+/* ── MODALS ── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+.modal.hidden { display: none; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+}
+
+.modal-box {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 24px 20px 32px;
+  animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color var(--transition);
+}
+.modal-close:hover { color: var(--text-0); }
+
+.modal-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-family: var(--font-body);
+  font-size: .88rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 8px 0 10px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: var(--transition);
+}
+.modal-tab.active {
+  color: var(--yellow-0);
+  border-bottom-color: var(--yellow-0);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal-form.hidden { display: none; }
+
+.modal-box h3 {
+  font-family: var(--font-title);
+  font-size: .95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-1);
+  margin-bottom: 16px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-0);
+  font-family: var(--font-body);
+  font-size: .92rem;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+input:focus, select:focus { border-color: var(--yellow-3); }
+input::placeholder { color: var(--text-3); }
+
+select option { background: var(--bg-2); }
+
+.btn-primary {
+  background: var(--yellow-4);
+  border: 1px solid var(--yellow-3);
+  color: var(--yellow-0);
+  font-family: var(--font-body);
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 11px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-primary:hover { background: var(--yellow-3); border-color: var(--yellow-0); color: #fff; }
+
+.form-error {
+  font-size: .8rem;
+  color: #e55;
+  text-align: center;
+}
+.form-error.hidden { display: none; }
+
+/* ── UTILS ── */
+.hidden { display: none !important; }
+
+/* ── RESPONSIVE desktop ── */
+@media (min-width: 640px) {
+  #main-content { max-width: 600px; margin-left: auto; margin-right: auto; }
+  .modal { align-items: center; }
+  .modal-box {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding-bottom: 24px;
+    animation: fadeIn .2s ease;
   }
-
-  container.innerHTML = filters.map((category) => `
-    <button
-      type="button"
-      class="technique-filter-btn ${state.techniqueFilter === category ? 'active' : ''}"
-      data-category="${category}"
-    >
-      ${category}
-    </button>
-  `).join('');
-
-  container.querySelectorAll('.technique-filter-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.techniqueFilter = btn.dataset.category;
-      renderTechniqueFilters();
-      renderTechniques();
-    });
-  });
-}
-
-function normalizeSkills(skillsFromDb) {
-  const incoming = Array.isArray(skillsFromDb) ? skillsFromDb : [];
-  const byId = new Map(incoming.map((s) => [s.id, s]));
-  const byName = new Map(incoming.map((s) => [s.name, s]));
-
-  return DEFAULT_SKILLS.map((base) => {
-    const source = byId.get(base.id) || byName.get(base.name);
-    const val = Number.isFinite(source?.value) ? source.value : base.value;
-    return { ...base, value: Math.max(0, Math.min(10, val)) };
-  });
-}
-
-function normalizeTechniques(techniquesFromDb) {
-  const incoming = Array.isArray(techniquesFromDb) ? techniquesFromDb : [];
-
-  const normalizedIncoming = incoming
-    .map((t) => ({
-      name: String(t.name || '').trim(),
-      category: String(t.category || 'Autre').trim() || 'Autre',
-      mastered: !!t.mastered,
-      locked: !!t.locked,
-    }))
-    .filter((t) => t.name);
-
-  const incomingByKey = new Map(normalizedIncoming.map((t) => [techniqueKey(t), t]));
-
-  const mergedDefaults = DEFAULT_TECHNIQUES.map((base) => {
-    const existing = incomingByKey.get(techniqueKey(base));
-    return {
-      ...base,
-      mastered: existing ? !!existing.mastered : !!base.mastered,
-      locked: true,
-    };
-  });
-
-  const defaultKeys = new Set(DEFAULT_TECHNIQUES.map((t) => techniqueKey(t)));
-
-  const customTechniques = normalizedIncoming
-    .filter((t) => !defaultKeys.has(techniqueKey(t)))
-    .map((t) => ({
-      ...t,
-      locked: !!t.locked,
-    }));
-
-  return [...mergedDefaults, ...customTechniques];
-}
-
-function resetStateToDefaults() {
-  state.skills = cloneSkills();
-  state.techniques = cloneTechniques();
-  state.history = [];
-  state.observations = '';
-  state.techniqueFilter = 'Toutes';
-  if (obsEl) obsEl.value = '';
-}
-
-function normalizePseudo(pseudo) {
-  return String(pseudo || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9._-]/g, '');
-}
-
-function pseudoToEmail(pseudo) {
-  return `${normalizePseudo(pseudo)}@gong.app`;
-}
-
-function safePseudoFromEmail(email) {
-  return String(email || '').split('@')[0] || '';
-}
-
-function showError(el, msg) {
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove('hidden');
-}
-
-function hideError(el) {
-  if (!el) return;
-  el.textContent = '';
-  el.classList.add('hidden');
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2200);
-}
-
-function addHistory(type, desc) {
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  state.history.unshift({ type, desc, date: dateStr });
-  if (state.history.length > 200) state.history.pop();
-}
-
-function isLoggedIn() {
-  return !!state.user?.id;
-}
-
-function openModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('hidden');
-}
-
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('hidden');
-}
-
-function updateAuthUI() {
-  if (state.user) {
-    if (authBtn) {
-      authBtn.textContent = 'Déconnexion';
-      authBtn.classList.add('logged-in');
-    }
-    if (userDisplay) {
-      userDisplay.textContent = state.user.pseudo;
-      userDisplay.classList.remove('hidden');
-    }
-  } else {
-    if (authBtn) {
-      authBtn.textContent = 'Se connecter';
-      authBtn.classList.remove('logged-in');
-    }
-    if (userDisplay) {
-      userDisplay.textContent = '';
-      userDisplay.classList.add('hidden');
-    }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(.97); }
+    to   { opacity: 1; transform: scale(1); }
   }
 }
 
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.tab === name);
-  });
-
-  document.querySelectorAll('.tab-section').forEach((s) => {
-    s.classList.toggle('active', s.id === `tab-${name}`);
-  });
-
-  if (name === 'profil') drawRadar('radar-canvas', state.skills);
-  if (name === 'techniques') {
-    renderTechniqueFilters();
-    renderTechniques();
-  }
-  if (name === 'historique') renderHistory();
-  if (name === 'communaute') renderCommunity();
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: var(--bg-3);
+  border: 1px solid var(--yellow-4);
+  color: var(--yellow-1);
+  font-size: .82rem;
+  font-family: var(--font-mono);
+  padding: 8px 18px;
+  border-radius: 20px;
+  z-index: 300;
+  white-space: nowrap;
+  animation: toastIn .2s ease, toastOut .3s ease 1.8s forwards;
 }
-
-document.querySelectorAll('.tab-btn').forEach((btn) => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
-
-document.querySelectorAll('.modal-backdrop').forEach((b) => {
-  b.addEventListener('click', () => {
-    document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden'));
-  });
-});
-
-document.querySelectorAll('.modal-tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.modal-tab').forEach((t) => t.classList.remove('active'));
-    tab.classList.add('active');
-    const which = tab.dataset.modalTab;
-    document.getElementById('modal-login')?.classList.toggle('hidden', which !== 'login');
-    document.getElementById('modal-register')?.classList.toggle('hidden', which !== 'register');
-  });
-});
-
-// ── COLORS ───────────────────────────────────────────────────────────────────
-function valueColor(v) {
-  const t = v / 10;
-  if (t === 0) return { r: 58, g: 58, b: 58 };
-
-  const stops = [
-    { t: 0, r: 58, g: 58, b: 58 },
-    { t: 0.3, r: 80, g: 60, b: 5 },
-    { t: 0.6, r: 160, g: 110, b: 0 },
-    { t: 0.8, r: 220, g: 160, b: 0 },
-    { t: 1, r: 255, g: 208, b: 0 },
-  ];
-
-  let i = 0;
-  while (i < stops.length - 1 && stops[i + 1].t <= t) i++;
-  const a = stops[i];
-  const b = stops[Math.min(i + 1, stops.length - 1)];
-  const f = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
-
-  return {
-    r: Math.round(a.r + (b.r - a.r) * f),
-    g: Math.round(a.g + (b.g - a.g) * f),
-    b: Math.round(a.b + (b.b - a.b) * f),
-  };
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
-
-function colorStr(v) {
-  const { r, g, b } = valueColor(v);
-  return `rgb(${r},${g},${b})`;
-}
-
-function colorHex(v) {
-  const { r, g, b } = valueColor(v);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-// ── RADAR ────────────────────────────────────────────────────────────────────
-function drawRadar(canvasId, skills, secondarySkills = null) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
-  const cx = W / 2;
-  const cy = H / 2;
-  const R = Math.min(W, H) * 0.31;
-  const N = skills.length;
-  const levels = 5;
-
-  ctx.clearRect(0, 0, W, H);
-
-  for (let l = 1; l <= levels; l++) {
-    const r = (R / levels) * l;
-    ctx.beginPath();
-    for (let i = 0; i < N; i++) {
-      const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = l === levels ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = l === levels ? 1.5 : 1;
-    ctx.stroke();
-  }
-
-  for (let i = 0; i < N; i++) {
-    const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle));
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  function drawPolygon(skillsArr, fillColor, strokeColor, alpha = 1) {
-    ctx.beginPath();
-    for (let i = 0; i < N; i++) {
-      const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
-      const val = Math.max(0, Math.min(10, skillsArr[i].value));
-      const r = (val / 10) * R;
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = fillColor;
-    ctx.globalAlpha = alpha;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  const avg = skills.reduce((s, k) => s + k.value, 0) / N;
-
-  drawPolygon(
-    skills,
-    `rgba(${Object.values(valueColor(avg)).join(',')},0.13)`,
-    colorStr(avg * 0.9 + 1)
-  );
-
-  for (let i = 0; i < N; i++) {
-    const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
-    const val = Math.max(0, Math.min(10, skills[i].value));
-    const r = (val / 10) * R;
-    const x = cx + r * Math.cos(angle);
-    const y = cy + r * Math.sin(angle);
-
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = colorStr(val);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  if (secondarySkills) {
-    drawPolygon(
-      secondarySkills,
-      'rgba(120,180,255,0.08)',
-      'rgba(120,180,255,0.6)',
-      1
-    );
-  }
-
-  for (let i = 0; i < N; i++) {
-    const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
-
-    let labelR = R + 34;
-    let offsetX = 0;
-
-    if (skills[i].name === 'Structure') {
-      labelR = R + 26;
-      offsetX = -18;
-    }
-
-    const x = cx + labelR * Math.cos(angle) + offsetX;
-    const y = cy + labelR * Math.sin(angle);
-
-    ctx.font = '600 11px Barlow, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = colorStr(skills[i].value);
-
-    const label = skills[i].name.toUpperCase();
-    ctx.fillText(label, x, y);
-  }
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.fill();
-}
-
-// ── REMOTE DB ────────────────────────────────────────────────────────────────
-async function ensureRemoteRow() {
-  if (!isLoggedIn() || !supabaseClient) return;
-
-  const isoNow = new Date().toISOString();
-
-  const privatePayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    techniques: state.techniques,
-    history: state.history,
-    observations: state.observations,
-    updated_at: isoNow,
-  };
-
-  const publicPayload = {
-     id: state.user.id,
-     pseudo: state.user.pseudo,
-     skills: state.skills,
-     techniques: state.techniques,
-     updated_at: isoNow,
-   };
-
-  const { error: privateError } = await supabaseClient
-    .from('gong_users')
-    .upsert(privatePayload, { onConflict: 'id' });
-
-  if (privateError) {
-    console.warn('[Gōng] ensureRemoteRow private error', privateError);
-  }
-
-  const { error: publicError } = await supabaseClient
-    .from('gong_public_profiles')
-    .upsert(publicPayload, { onConflict: 'id' });
-
-  if (publicError) {
-    console.warn('[Gōng] ensureRemoteRow public error', publicError);
-  }
-}
-
-async function loadRemoteUserState() {
-  if (!isLoggedIn() || !supabaseClient) return;
-
-  const { data, error } = await supabaseClient
-    .from('gong_users')
-    .select('id, pseudo, skills, techniques, history, observations')
-    .eq('id', state.user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.warn('[Gōng] Supabase load error', error);
-    return;
-  }
-
-  if (!data) {
-    await ensureRemoteRow();
-    return;
-  }
-
-  state.user.pseudo = data.pseudo || state.user.pseudo;
-  state.skills = normalizeSkills(data.skills);
-  state.techniques = normalizeTechniques(data.techniques);
-  state.history = Array.isArray(data.history) ? data.history : [];
-  state.observations = typeof data.observations === 'string' ? data.observations : '';
-  state.techniqueFilter = 'Toutes';
-
-  if (obsEl) obsEl.value = state.observations;
-
-  renderSkills();
-  renderTechniqueFilters();
-  renderTechniques();
-  renderHistory();
-  drawRadar('radar-canvas', state.skills);
-}
-
-async function syncRemoteUserState() {
-  if (!isLoggedIn() || !supabaseClient) return;
-
-  const isoNow = new Date().toISOString();
-
-  const privatePayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    techniques: state.techniques,
-    history: state.history,
-    observations: state.observations,
-    updated_at: isoNow,
-  };
-
-  const publicPayload = {
-     id: state.user.id,
-     pseudo: state.user.pseudo,
-     skills: state.skills,
-     techniques: state.techniques,
-     updated_at: isoNow,
-   };
-
-  const { error: privateError } = await supabaseClient
-    .from('gong_users')
-    .upsert(privatePayload, { onConflict: 'id' });
-
-  if (privateError) {
-    console.warn('[Gōng] Supabase private sync error', privateError);
-  }
-
-  const { error: publicError } = await supabaseClient
-    .from('gong_public_profiles')
-    .upsert(publicPayload, { onConflict: 'id' });
-
-  if (publicError) {
-    console.warn('[Gōng] Supabase public sync error', publicError);
-  }
-}
-
-function scheduleRemoteSync() {
-  if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
-  if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
-
-  remoteSyncTimer = setTimeout(() => {
-    syncRemoteUserState();
-  }, 400);
-}
-
-// ── SKILLS UI ────────────────────────────────────────────────────────────────
-function renderSkills() {
-  const container = document.getElementById('skills-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  state.skills.forEach((skill) => {
-    const div = document.createElement('div');
-    div.className = 'skill-item';
-    div.innerHTML = `
-      <div class="skill-header">
-        <span class="skill-name">${skill.name}</span>
-        <span class="skill-value" id="val-${skill.id}" style="color:${colorStr(skill.value)}">${skill.value}</span>
-      </div>
-      <div class="skill-slider-wrap">
-        <input type="range" min="0" max="10" step="1" value="${skill.value}"
-          id="slider-${skill.id}" data-id="${skill.id}" />
-      </div>
-    `;
-    container.appendChild(div);
-
-    const slider = div.querySelector(`#slider-${skill.id}`);
-    updateSliderStyle(slider, skill.value);
-    slider.addEventListener('input', onSliderInput);
-    slider.addEventListener('change', onSliderChange);
-  });
-}
-
-function updateSliderStyle(slider, v) {
-  const pct = (v / 10) * 100;
-  const col = colorHex(v);
-  const glow = v > 0 ? `rgba(${Object.values(valueColor(v)).join(',')},0.4)` : 'transparent';
-
-  slider.style.setProperty('--thumb-color', col);
-  slider.style.setProperty('--thumb-border', col);
-  slider.style.setProperty('--thumb-glow', glow);
-  slider.style.setProperty(
-    '--track-bg',
-    `linear-gradient(to right, ${col} 0%, ${col} ${pct}%, var(--bg-4) ${pct}%, var(--bg-4) 100%)`
-  );
-}
-
-function onSliderInput(e) {
-  const id = e.target.dataset.id;
-  const v = parseInt(e.target.value, 10);
-  const skill = state.skills.find((s) => s.id === id);
-  if (!skill) return;
-
-  skill.value = v;
-
-  const valEl = document.getElementById(`val-${id}`);
-  if (valEl) {
-    valEl.textContent = v;
-    valEl.style.color = colorStr(v);
-  }
-
-  updateSliderStyle(e.target, v);
-  drawRadar('radar-canvas', state.skills);
-}
-
-function onSliderChange(e) {
-  const id = e.target.dataset.id;
-  const v = parseInt(e.target.value, 10);
-  const skill = state.skills.find((s) => s.id === id);
-  if (!skill) return;
-
-  addHistory('skill', `${skill.name} → ${v}/10`);
-  renderHistory();
-  scheduleRemoteSync();
-}
-
-// ── TECHNIQUES UI ────────────────────────────────────────────────────────────
-function renderTechniques() {
-  const container = document.getElementById('techniques-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  const filteredTechniques = state.techniques.filter((tech) => {
-    return state.techniqueFilter === 'Toutes' || tech.category === state.techniqueFilter;
-  });
-
-  if (!filteredTechniques.length) {
-    container.innerHTML = '<p style="color:var(--text-3);font-size:.88rem;text-align:center;padding:30px 0">Aucune technique dans cette catégorie.</p>';
-    return;
-  }
-
-  filteredTechniques.forEach((tech) => {
-    const idx = state.techniques.findIndex((t) => techniqueKey(t) === techniqueKey(tech));
-    const div = document.createElement('div');
-    div.className = `technique-item ${tech.mastered ? 'mastered' : ''} ${tech.locked ? 'locked' : ''}`;
-
-    div.innerHTML = `
-      <div class="technique-check" data-idx="${idx}"></div>
-      <div class="technique-info">
-        <div class="technique-name">${tech.name}</div>
-        <div class="technique-category">${tech.category}</div>
-      </div>
-      ${tech.locked ? '' : `<button class="technique-delete" data-idx="${idx}" title="Supprimer" type="button">✕</button>`}
-    `;
-
-    div.addEventListener('click', (e) => {
-      if (e.target.closest('.technique-delete')) return;
-      toggleTechnique(idx);
-    });
-
-    const deleteBtn = div.querySelector('.technique-delete');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteTechnique(idx);
-      });
-    }
-
-    container.appendChild(div);
-  });
-}
-
-function toggleTechnique(idx) {
-  if (!state.techniques[idx]) return;
-
-  state.techniques[idx].mastered = !state.techniques[idx].mastered;
-  const status = state.techniques[idx].mastered ? 'maîtrisée' : 'non maîtrisée';
-  addHistory('tech', `${state.techniques[idx].name} marquée ${status}`);
-  renderTechniques();
-  renderHistory();
-  scheduleRemoteSync();
-}
-
-function deleteTechnique(idx) {
-  if (!state.techniques[idx]) return;
-  if (state.techniques[idx].locked) return;
-
-  const name = state.techniques[idx].name;
-  state.techniques.splice(idx, 1);
-
-  if (state.techniqueFilter !== 'Toutes') {
-    const categories = getTechniqueCategories();
-    if (!categories.includes(state.techniqueFilter)) {
-      state.techniqueFilter = 'Toutes';
-    }
-  }
-
-  addHistory('tech', `Technique supprimée : ${name}`);
-  renderTechniqueFilters();
-  renderTechniques();
-  renderHistory();
-  scheduleRemoteSync();
-}
-
-// ── HISTORY ──────────────────────────────────────────────────────────────────
-function renderHistory() {
-  const container = document.getElementById('history-list');
-  if (!container) return;
-
-  if (!state.history.length) {
-    container.innerHTML = '<p class="history-empty">Aucune modification enregistrée.</p>';
-    return;
-  }
-
-  container.innerHTML = state.history.map((h) => `
-    <div class="history-item type-${h.type}">
-      <span class="history-date">${h.date}</span>
-      <span class="history-desc">${h.desc}</span>
-    </div>
-  `).join('');
-}
-
-// ── COMMUNITY ────────────────────────────────────────────────────────────────
-async function renderCommunity() {
-  const container = document.getElementById('community-list');
-  if (!container) return;
-
-  if (!supabaseClient) {
-    container.innerHTML = '<p class="community-empty">Communauté indisponible.</p>';
-    return;
-  }
-
-  container.innerHTML = '<p class="community-empty">Chargement…</p>';
-
-  const { data, error } = await supabaseClient
-    .from('gong_public_profiles')
-    .select('id, pseudo, skills, techniques, updated_at')
-    .order('updated_at', { ascending: false });
-
-  if (error) {
-    console.error('[Gōng] Community load error:', error);
-    container.innerHTML = '<p class="community-empty">Erreur de chargement.</p>';
-    return;
-  }
-
-  const users = (data || []).filter(u => u.id !== state.user?.id);
-
-  if (!users.length) {
-    container.innerHTML = '<p class="community-empty">Aucun utilisateur.</p>';
-    return;
-  }
-
-  container.innerHTML = users.map(user => {
-    const skills = normalizeSkills(user.skills);
-    const avg = skills.length
-      ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1)
-      : '0';
-
-    const DEFAULT_FORMS_TOTAL = DEFAULT_TECHNIQUES.filter(t => t.category === 'Formes').length;
-
-   const forms = Array.isArray(user.techniques)
-     ? user.techniques.filter(t => t.category === 'Formes')
-     : [];
-
-   const formsValidated = forms.filter(t => t.mastered).length;
-
-   // si aucune donnée → on prend le total par défaut
-   const formsTotal = forms.length || DEFAULT_FORMS_TOTAL;
-
-   const formsDisplay = `${formsValidated}/${formsTotal}`;
-
-    return `
-      <div class="community-item">
-        <div>
-          <div class="community-pseudo">${user.pseudo}</div>
-          <div class="community-stats">
-            <span>Moyenne : ${avg}/10</span>
-            <span class="forms-count">Formes : ${formsDisplay}</span>
-          </div>
-        </div>
-        <button class="btn-compare" data-id="${user.id}">Comparer</button>
-      </div>
-    `;
-  }).join('');
-
-  container.querySelectorAll('.btn-compare').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const user = users.find(u => u.id === btn.dataset.id);
-      if (!user) return;
-
-      showComparison({
-        pseudo: user.pseudo,
-        skills: normalizeSkills(user.skills)
-      });
-    });
-  });
-}
-
-function showComparison(other) {
-  const title = document.getElementById('compare-title');
-  if (title) title.textContent = `Vous vs ${other.pseudo}`;
-  if (compareRadarContainer) compareRadarContainer.classList.remove('hidden');
-  drawRadar('compare-canvas', state.skills, other.skills);
-}
-
-// ── AUTH ─────────────────────────────────────────────────────────────────────
-async function handleRegister() {
-  hideError(regErrorEl);
-
-  if (!supabaseClient) {
-    showError(regErrorEl, 'Supabase non configuré.');
-    return;
-  }
-
-  const pseudo = regPseudoEl?.value.trim() || '';
-  const password = regPasswordEl?.value || '';
-
-  if (!pseudo || !password) {
-    showError(regErrorEl, 'Pseudo et mot de passe requis.');
-    return;
-  }
-
-  if (normalizePseudo(pseudo).length < 3) {
-    showError(regErrorEl, 'Pseudo trop court.');
-    return;
-  }
-
-  if (password.length < 4) {
-    showError(regErrorEl, 'Mot de passe trop court (4 caractères min.).');
-    return;
-  }
-
-  const email = pseudoToEmail(pseudo);
-
-  const { data, error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { pseudo },
-    },
-  });
-
-  if (error) {
-    showError(regErrorEl, error.message || 'Inscription impossible.');
-    return;
-  }
-
-  const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (signIn.error) {
-    showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
-    return;
-  }
-
-  console.log('REGISTER RESULT', data);
-  showToast(`Compte créé. Bienvenue, ${pseudo} !`);
-  closeModal('auth-modal');
-}
-
-async function handleLogin() {
-  hideError(loginErrorEl);
-
-  if (!supabaseClient) {
-    showError(loginErrorEl, 'Supabase non configuré.');
-    return;
-  }
-
-  const pseudo = loginPseudoEl?.value.trim() || '';
-  const password = loginPasswordEl?.value || '';
-
-  if (!pseudo || !password) {
-    showError(loginErrorEl, 'Pseudo et mot de passe requis.');
-    return;
-  }
-
-  const email = pseudoToEmail(pseudo);
-
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
-    return;
-  }
-
-  closeModal('auth-modal');
-  showToast(`Bienvenue, ${pseudo} !`);
-}
-
-async function handleLogout() {
-  if (!supabaseClient) return;
-
-  await supabaseClient.auth.signOut();
-  state.user = null;
-  resetStateToDefaults();
-  updateAuthUI();
-  renderSkills();
-  renderTechniqueFilters();
-  renderTechniques();
-  renderHistory();
-  drawRadar('radar-canvas', state.skills);
-  showToast('Déconnecté');
-}
-
-async function applySession(session) {
-  if (!session?.user) {
-    state.user = null;
-    resetStateToDefaults();
-    if (obsEl) obsEl.value = '';
-    updateAuthUI();
-    renderSkills();
-    renderTechniqueFilters();
-    renderTechniques();
-    renderHistory();
-    drawRadar('radar-canvas', state.skills);
-    return;
-  }
-
-  const user = session.user;
-
-  state.user = {
-    id: user.id,
-    pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email),
-    email: user.email,
-  };
-
-  updateAuthUI();
-
-  isInitialLoading = true;
-  await loadRemoteUserState();
-  isInitialLoading = false;
-}
-
-// ── PWA INSTALL ──────────────────────────────────────────────────────────────
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  installBtn?.classList.remove('hidden');
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredInstallPrompt = null;
-  installBtn?.classList.add('hidden');
-});
-
-async function handleInstallApp() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  await deferredInstallPrompt.userChoice;
-  deferredInstallPrompt = null;
-  installBtn?.classList.add('hidden');
-}
-
-// ── INIT ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  injectDynamicStyles();
-  ensureTechniqueFiltersContainer();
-  ensureFormesOption();
-
-  renderSkills();
-  renderTechniqueFilters();
-  renderTechniques();
-  renderHistory();
-  drawRadar('radar-canvas', state.skills);
-
-  if (obsEl) obsEl.value = state.observations || '';
-
-  saveObsBtn?.addEventListener('click', () => {
-    state.observations = obsEl?.value || '';
-    addHistory('obs', 'Observations mises à jour');
-    renderHistory();
-    scheduleRemoteSync();
-
-    saveObsBtn.textContent = '✓ Enregistré';
-    saveObsBtn.classList.add('saved');
-
-    setTimeout(() => {
-      saveObsBtn.textContent = 'Enregistrer';
-      saveObsBtn.classList.remove('saved');
-    }, 2000);
-
-    showToast('Observations enregistrées');
-  });
-
-  authBtn?.addEventListener('click', () => {
-    if (state.user) {
-      handleLogout();
-    } else {
-      openModal('auth-modal');
-    }
-  });
-
-  modalCloseBtn?.addEventListener('click', () => closeModal('auth-modal'));
-  techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
-
-  if (closeCompareBtn) {
-    closeCompareBtn.addEventListener('click', () => {
-      compareRadarContainer?.classList.add('hidden');
-    });
-  }
-
-  loginBtnEl?.addEventListener('click', handleLogin);
-  registerBtnEl?.addEventListener('click', handleRegister);
-  installBtn?.addEventListener('click', handleInstallApp);
-
-  addTechniqueBtn?.addEventListener('click', () => {
-    openModal('technique-modal');
-  });
-
-  addTechniqueConfirm?.addEventListener('click', () => {
-    const name = newTechniqueName?.value.trim() || '';
-    const cat = newTechniqueCategory?.value || 'Autre';
-
-    if (!name) {
-      showToast('Entrez un nom de technique');
-      return;
-    }
-
-    state.techniques.push({
-      name,
-      category: cat,
-      mastered: false,
-      locked: false,
-    });
-
-    state.techniqueFilter = cat;
-    addHistory('tech', `Nouvelle technique ajoutée : ${name}`);
-    renderTechniqueFilters();
-    renderTechniques();
-    renderHistory();
-    scheduleRemoteSync();
-    closeModal('technique-modal');
-
-    if (newTechniqueName) newTechniqueName.value = '';
-
-    showToast(`"${name}" ajoutée`);
-  });
-
-  if (supabaseClient) {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    await applySession(session);
-
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-      await applySession(session);
-    });
-  }
-});
-
-// ── SERVICE WORKER ───────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Gong/sw.js')
-      .then((r) => console.log('[Gōng] SW enregistré', r.scope))
-      .catch((e) => console.warn('[Gōng] SW erreur', e));
-  });
+@keyframes toastOut {
+  to   { opacity: 0; transform: translateX(-50%) translateY(-8px); }
 }
