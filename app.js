@@ -878,55 +878,55 @@ function renderHistory() {
 // ── COMMUNITY ────────────────────────────────────────────────────────────────
 async function renderCommunity() {
   const container = document.getElementById('community-list');
-  if (!container) return;
 
-  if (!supabaseClient) {
-    container.innerHTML = '<p class="history-empty">Communauté indisponible.</p>';
-    return;
-  }
-
-  container.innerHTML = '<p class="history-empty">Chargement…</p>';
+  if (!supabaseClient) return;
 
   const { data, error } = await supabaseClient
     .from('gong_public_profiles')
-    .select('id, pseudo, skills, updated_at')
-    .order('updated_at', { ascending: false });
+    .select('id, pseudo, skills, techniques');
 
-  if (error) {
-    console.warn('[Gōng] Community load error', error);
-    container.innerHTML = '<p class="history-empty">Impossible de charger la communauté.</p>';
+  if (error || !data) {
+    container.innerHTML = '<p class="community-empty">Erreur de chargement.</p>';
     return;
   }
 
-  const users = (data || [])
-    .filter((u) => u.id !== state.user?.id)
-    .map((u) => ({
-      id: u.id,
-      pseudo: u.pseudo,
-      skills: normalizeSkills(u.skills),
-    }));
-
-  if (!users.length) {
-    container.innerHTML = '<p class="history-empty">Aucun autre pratiquant pour le moment.</p>';
+  if (!data.length) {
+    container.innerHTML = '<p class="community-empty">Aucun utilisateur.</p>';
     return;
   }
 
-  container.innerHTML = users.map((u, idx) => {
-    const avg = (u.skills.reduce((s, k) => s + k.value, 0) / u.skills.length).toFixed(1);
+  container.innerHTML = data.map(user => {
+
+    // Moyenne
+    const avg = (user.skills || []).length
+      ? (user.skills.reduce((s, k) => s + (k.value || 0), 0) / user.skills.length).toFixed(1)
+      : '0';
+
+    // 🔥 Comptage des formes validées
+    const forms = (user.techniques || []).filter(t => t.category === 'Formes');
+    const formsValidated = forms.filter(t => t.mastered).length;
+    const formsTotal = forms.length;
+
     return `
       <div class="community-item">
         <div>
-          <div class="community-pseudo">${u.pseudo}</div>
-          <div class="community-avg">Moyenne : ${avg}/10</div>
+          <div class="community-pseudo">${user.pseudo}</div>
+          
+          <div class="community-stats">
+            <span>Moyenne : ${avg}/10</span>
+            <span class="forms-count">Formes : ${formsValidated}</span>
+          </div>
         </div>
-        <button class="btn-compare" data-idx="${idx}">Comparer</button>
-      </div>`;
+
+        <button class="btn-compare" data-id="${user.id}">Comparer</button>
+      </div>
+    `;
   }).join('');
 
-  container.querySelectorAll('.btn-compare').forEach((btn) => {
+  container.querySelectorAll('.btn-compare').forEach(btn => {
     btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.idx, 10);
-      showComparison(users[idx]);
+      const user = data.find(u => u.id === btn.dataset.id);
+      if (user) showComparison(user);
     });
   });
 }
