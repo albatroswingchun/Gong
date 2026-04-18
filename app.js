@@ -914,7 +914,7 @@ async function renderCommunity() {
           
           <div class="community-stats">
             <span>Moyenne : ${avg}/10</span>
-            <span class="forms-count">Formes : ${formsValidated}</span>
+            <span class="forms-count">Formes : ${formsValidated}/${formsTotal}</span>
           </div>
         </div>
 
