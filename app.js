@@ -110,6 +110,8 @@ const closeCompareBtn = document.getElementById('close-compare');
 
 const installBtn = document.getElementById('install-btn');
 
+const loadingScreen = document.getElementById('loading-screen');
+
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function normalizeSkills(skillsFromDb) {
   const incoming = Array.isArray(skillsFromDb) ? skillsFromDb : [];
@@ -902,12 +904,26 @@ async function handleInstallApp() {
   installBtn?.classList.add('hidden');
 }
 
+function hideLoadingScreen() {
+  if (!loadingScreen) return;
+  loadingScreen.classList.add('hidden');
+
+  setTimeout(() => {
+    loadingScreen.remove();
+  }, 500);
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   renderSkills();
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
+
+  const splashMaxDuration = 1500;
+    setTimeout(() => {
+    hideLoadingScreen();
+ }, splashMaxDuration);
 
   if (obsEl) obsEl.value = state.observations || '';
 
