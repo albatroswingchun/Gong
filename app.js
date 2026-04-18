@@ -429,10 +429,10 @@ function renderHistory() {
 // ── COMMUNITY ────────────────────────────────────────────────────────────────
 function getDemoUsers() {
   return [
-    { pseudo: 'TigerChen', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [8,9,7,8,6,8,9,8][i] })) },
-    { pseudo: 'SilentWave', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [5,7,9,6,9,7,5,8][i] })) },
-    { pseudo: 'IronDragon', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [9,6,6,9,5,7,8,7][i] })) },
-    { pseudo: 'WillowFist', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [4,8,8,5,10,9,6,7][i] })) },
+    { pseudo: 'TigerChen', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [8, 9, 7, 8, 6, 8, 9][i] })) },
+    { pseudo: 'SilentWave', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [5, 7, 9, 6, 9, 7, 5][i] })) },
+    { pseudo: 'IronDragon', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [9, 6, 6, 9, 5, 7, 8][i] })) },
+    { pseudo: 'WillowFist', skills: DEFAULT_SKILLS.map((s,i) => ({ ...s, value: [4, 8, 8, 5, 10, 9, 6][i] })) },
   ];
 }
 
