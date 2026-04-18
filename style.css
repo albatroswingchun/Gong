@@ -660,6 +660,32 @@ textarea::placeholder { color: var(--text-3); }
 }
 .btn-close:hover { border-color: #c44; color: #e55; }
 
+.install-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 1200;
+  border: 1px solid rgba(255, 208, 0, 0.28);
+  background: rgba(20, 20, 20, 0.92);
+  color: #ffd000;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+}
+
+.install-btn.hidden {
+  display: none;
+}
+
+.install-btn:hover {
+  background: rgba(30, 30, 30, 0.98);
+}
+
 /* ── MODALS ── */
 .modal {
   position: fixed;
