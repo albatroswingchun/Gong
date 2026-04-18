@@ -2,7 +2,7 @@
    GŌNG — Service Worker (PWA)
 ═══════════════════════════════════════════ */
 
-const CACHE_NAME = 'gong-v3';
+const CACHE_NAME = 'gong-v4';
 
 const ASSETS = [
   '/Gong/',
