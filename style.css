@@ -680,6 +680,12 @@ textarea::placeholder { color: var(--text-3); }
   margin-top: 2px;
 }
 
+.community-stats {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 5vw, 2cm);
+}
+
 .btn-compare {
   background: var(--bg-4);
   border: 1px solid var(--border);
