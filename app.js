@@ -884,6 +884,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
+// TEMPORAIREMENT DÉSACTIVÉ
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/Gong/sw.js')
