@@ -577,18 +577,28 @@ function renderTechniques() {
 
   state.techniques.forEach((tech, idx) => {
     const div = document.createElement('div');
-    div.className = 'technique-item';
+    div.className = `technique-item ${tech.mastered ? 'mastered' : ''}`;
     div.innerHTML = `
-      <div class="technique-check ${tech.mastered ? 'mastered' : ''}" data-idx="${idx}"></div>
+      <div class="technique-check" data-idx="${idx}"></div>
       <div class="technique-info">
         <div class="technique-name">${tech.name}</div>
         <div class="technique-category">${tech.category}</div>
       </div>
-      <button class="technique-delete" data-idx="${idx}" title="Supprimer">✕</button>
+      <button class="technique-delete" data-idx="${idx}" title="Supprimer" type="button">✕</button>
     `;
 
-    div.querySelector('.technique-check').addEventListener('click', () => toggleTechnique(idx));
-    div.querySelector('.technique-delete').addEventListener('click', () => deleteTechnique(idx));
+    const deleteBtn = div.querySelector('.technique-delete');
+
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('.technique-delete')) return;
+      toggleTechnique(idx);
+    });
+
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteTechnique(idx);
+    });
+
     container.appendChild(div);
   });
 }
