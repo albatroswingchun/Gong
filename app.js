@@ -878,46 +878,56 @@ function renderHistory() {
 // ── COMMUNITY ────────────────────────────────────────────────────────────────
 async function renderCommunity() {
   const container = document.getElementById('community-list');
+  if (!container) return;
 
-  if (!supabaseClient) return;
+  if (!supabaseClient) {
+    container.innerHTML = '<p class="community-empty">Communauté indisponible.</p>';
+    return;
+  }
+
+  container.innerHTML = '<p class="community-empty">Chargement…</p>';
 
   const { data, error } = await supabaseClient
     .from('gong_public_profiles')
-    .select('id, pseudo, skills, techniques');
+    .select('id, pseudo, skills, techniques, updated_at')
+    .order('updated_at', { ascending: false });
 
-  if (error || !data) {
+  if (error) {
+    console.error('[Gōng] Community load error:', error);
     container.innerHTML = '<p class="community-empty">Erreur de chargement.</p>';
     return;
   }
 
-  if (!data.length) {
+  const users = (data || []).filter(u => u.id !== state.user?.id);
+
+  if (!users.length) {
     container.innerHTML = '<p class="community-empty">Aucun utilisateur.</p>';
     return;
   }
 
-  container.innerHTML = data.map(user => {
-
-    // Moyenne
-    const avg = (user.skills || []).length
-      ? (user.skills.reduce((s, k) => s + (k.value || 0), 0) / user.skills.length).toFixed(1)
+  container.innerHTML = users.map(user => {
+    const skills = normalizeSkills(user.skills);
+    const avg = skills.length
+      ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1)
       : '0';
 
-    // 🔥 Comptage des formes validées
-    const forms = (user.techniques || []).filter(t => t.category === 'Formes');
+    const forms = Array.isArray(user.techniques)
+      ? user.techniques.filter(t => t.category === 'Formes')
+      : [];
+
     const formsValidated = forms.filter(t => t.mastered).length;
     const formsTotal = forms.length;
+    const formsDisplay = formsTotal > 0 ? `${formsValidated}/${formsTotal}` : '-';
 
     return `
       <div class="community-item">
         <div>
           <div class="community-pseudo">${user.pseudo}</div>
-          
           <div class="community-stats">
             <span>Moyenne : ${avg}/10</span>
-            <span class="forms-count">Formes : ${formsValidated}/${formsTotal}</span>
+            <span class="forms-count">Formes : ${formsDisplay}</span>
           </div>
         </div>
-
         <button class="btn-compare" data-id="${user.id}">Comparer</button>
       </div>
     `;
@@ -925,8 +935,13 @@ async function renderCommunity() {
 
   container.querySelectorAll('.btn-compare').forEach(btn => {
     btn.addEventListener('click', () => {
-      const user = data.find(u => u.id === btn.dataset.id);
-      if (user) showComparison(user);
+      const user = users.find(u => u.id === btn.dataset.id);
+      if (!user) return;
+
+      showComparison({
+        pseudo: user.pseudo,
+        skills: normalizeSkills(user.skills)
+      });
     });
   });
 }
