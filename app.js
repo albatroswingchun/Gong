@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════
    GŌNG — Arts Martiaux · App Logic (Supabase)
-   Sync multi-appareils, sans localStorage pour les données
 ═══════════════════════════════════════════ */
 
 'use strict';
@@ -9,17 +8,17 @@
 const SUPABASE_URL = window.GONG_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.GONG_SUPABASE_ANON_KEY || '';
 
-if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'REMPLACE_ICI_PAR_TA_CLE_ANON_COMPLETE') {
   console.error('[Gōng] Supabase non configuré.');
 }
 
-const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
+const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'REMPLACE_ICI_PAR_TA_CLE_ANON_COMPLETE')
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storage: window.sessionStorage
+        storage: window.localStorage
       }
     })
   : null;
@@ -62,16 +61,16 @@ const DEFAULT_TECHNIQUES = [
 ];
 
 function cloneSkills() {
-  return DEFAULT_SKILLS.map((s) => ({ ...s }));
+  return DEFAULT_SKILLS.map(s => ({ ...s }));
 }
 
 function cloneTechniques() {
-  return DEFAULT_TECHNIQUES.map((t) => ({ ...t }));
+  return DEFAULT_TECHNIQUES.map(t => ({ ...t }));
 }
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
-  user: null,        // { id, pseudo, email }
+  user: null,
   skills: cloneSkills(),
   techniques: cloneTechniques(),
   history: [],
@@ -86,7 +85,6 @@ const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
 const userDisplay = document.getElementById('user-display');
 
-const authModal = document.getElementById('auth-modal');
 const modalCloseBtn = document.getElementById('modal-close-btn');
 
 const loginPseudoEl = document.getElementById('login-pseudo');
@@ -95,14 +93,12 @@ const loginBtnEl = document.getElementById('login-btn');
 const loginErrorEl = document.getElementById('login-error');
 
 const regPseudoEl = document.getElementById('reg-pseudo');
-const regEmailEl = document.getElementById('reg-email');
 const regPasswordEl = document.getElementById('reg-password');
 const registerBtnEl = document.getElementById('register-btn');
 const regErrorEl = document.getElementById('reg-error');
 
 const saveObsBtn = document.getElementById('save-obs-btn');
 const addTechniqueBtn = document.getElementById('add-technique-btn');
-const techniqueModal = document.getElementById('technique-modal');
 const techniqueModalClose = document.getElementById('technique-modal-close');
 const addTechniqueConfirm = document.getElementById('add-technique-confirm');
 const newTechniqueName = document.getElementById('new-technique-name');
@@ -112,10 +108,11 @@ const compareRadarContainer = document.getElementById('compare-radar-container')
 const closeCompareBtn = document.getElementById('close-compare');
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
-function normalizeSkills(skillsFromStorage) {
-  const incoming = Array.isArray(skillsFromStorage) ? skillsFromStorage : [];
+function normalizeSkills(skillsFromDb) {
+  const incoming = Array.isArray(skillsFromDb) ? skillsFromDb : [];
   const byId = new Map(incoming.map(s => [s.id, s]));
   const byName = new Map(incoming.map(s => [s.name, s]));
+
   return DEFAULT_SKILLS.map(base => {
     const source = byId.get(base.id) || byName.get(base.name);
     const val = Number.isFinite(source?.value) ? source.value : base.value;
@@ -124,11 +121,15 @@ function normalizeSkills(skillsFromStorage) {
 }
 
 function normalizeTechniques(techniques) {
-  return Array.isArray(techniques) ? techniques.map(t => ({
-    name: String(t.name || ''),
-    category: String(t.category || 'Autre'),
-    mastered: !!t.mastered
-  })).filter(t => t.name.trim()) : cloneTechniques();
+  return Array.isArray(techniques)
+    ? techniques
+        .map(t => ({
+          name: String(t.name || ''),
+          category: String(t.category || 'Autre'),
+          mastered: !!t.mastered
+        }))
+        .filter(t => t.name.trim())
+    : cloneTechniques();
 }
 
 function resetStateToDefaults() {
@@ -188,20 +189,18 @@ function addHistory(type, desc) {
   if (state.history.length > 200) state.history.pop();
 }
 
-function currentUserPseudo() {
-  return state.user?.pseudo || '';
-}
-
 function isLoggedIn() {
   return !!state.user?.id;
 }
 
 function openModal(id) {
-  document.getElementById(id).classList.remove('hidden');
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('hidden');
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.add('hidden');
+  const el = document.getElementById(id);
+  if (el) el.classList.add('hidden');
 }
 
 function updateAuthUI() {
@@ -222,9 +221,11 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === name);
   });
+
   document.querySelectorAll('.tab-section').forEach(s => {
     s.classList.toggle('active', s.id === `tab-${name}`);
   });
+
   if (name === 'profil') drawRadar('radar-canvas', state.skills);
   if (name === 'techniques') renderTechniques();
   if (name === 'historique') renderHistory();
@@ -267,13 +268,13 @@ function valueColor(v) {
   let i = 0;
   while (i < stops.length - 1 && stops[i + 1].t <= t) i++;
   const a = stops[i];
-  const b2 = stops[Math.min(i + 1, stops.length - 1)];
-  const f = b2.t === a.t ? 1 : (t - a.t) / (b2.t - a.t);
+  const b = stops[Math.min(i + 1, stops.length - 1)];
+  const f = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
 
   return {
-    r: Math.round(a.r + (b2.r - a.r) * f),
-    g: Math.round(a.g + (b2.g - a.g) * f),
-    b: Math.round(a.b + (b2.b - a.b) * f),
+    r: Math.round(a.r + (b.r - a.r) * f),
+    g: Math.round(a.g + (b.g - a.g) * f),
+    b: Math.round(a.b + (b.b - a.b) * f),
   };
 }
 
@@ -291,9 +292,12 @@ function colorHex(v) {
 function drawRadar(canvasId, skills, secondarySkills = null) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
+
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const cx = W / 2, cy = H / 2;
+  const W = canvas.width;
+  const H = canvas.height;
+  const cx = W / 2;
+  const cy = H / 2;
   const R = Math.min(W, H) * 0.38;
   const N = skills.length;
   const levels = 5;
@@ -346,6 +350,7 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
   }
 
   const avg = skills.reduce((s, k) => s + k.value, 0) / N;
+
   drawPolygon(
     skills,
     `rgba(${Object.values(valueColor(avg)).join(',')},0.13)`,
@@ -358,6 +363,7 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     const r = (val / 10) * R;
     const x = cx + r * Math.cos(angle);
     const y = cy + r * Math.sin(angle);
+
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
     ctx.fillStyle = colorStr(val);
@@ -401,7 +407,7 @@ async function ensureRemoteRow() {
   if (!isLoggedIn() || !supabaseClient) return;
 
   const payload = {
-    user_id: state.user.id,
+    id: state.user.id,
     pseudo: state.user.pseudo,
     skills: state.skills,
     techniques: state.techniques,
@@ -412,7 +418,7 @@ async function ensureRemoteRow() {
 
   const { error } = await supabaseClient
     .from('gong_users')
-    .upsert(payload, { onConflict: 'user_id' });
+    .upsert(payload, { onConflict: 'id' });
 
   if (error) {
     console.warn('[Gōng] ensureRemoteRow error', error);
@@ -424,8 +430,8 @@ async function loadRemoteUserState() {
 
   const { data, error } = await supabaseClient
     .from('gong_users')
-    .select('pseudo, skills, techniques, history, observations')
-    .eq('user_id', state.user.id)
+    .select('id, pseudo, skills, techniques, history, observations')
+    .eq('id', state.user.id)
     .maybeSingle();
 
   if (error) {
@@ -456,7 +462,7 @@ async function syncRemoteUserState() {
   if (!isLoggedIn() || !supabaseClient) return;
 
   const payload = {
-    user_id: state.user.id,
+    id: state.user.id,
     pseudo: state.user.pseudo,
     skills: state.skills,
     techniques: state.techniques,
@@ -467,7 +473,7 @@ async function syncRemoteUserState() {
 
   const { error } = await supabaseClient
     .from('gong_users')
-    .upsert(payload, { onConflict: 'user_id' });
+    .upsert(payload, { onConflict: 'id' });
 
   if (error) {
     console.warn('[Gōng] Supabase sync error', error);
@@ -477,27 +483,27 @@ async function syncRemoteUserState() {
 function scheduleRemoteSync() {
   if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
+
   remoteSyncTimer = setTimeout(() => {
     syncRemoteUserState();
   }, 400);
 }
-
 
 async function verifySupabaseConnection() {
   if (!supabaseClient) return;
 
   const { error } = await supabaseClient
     .from('gong_users')
-    .select('user_id', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .limit(1);
 
   if (error) {
     console.warn('[Gōng] Vérification Supabase échouée', error);
-    showToast('Connexion Supabase incomplète (table/policies à vérifier).');
+    showToast('Connexion Supabase incomplète.');
     return;
   }
 
-  console.info('[Gōng] Supabase connecté (table gong_users accessible).');
+  console.info('[Gōng] Supabase connecté.');
 }
 
 // ── SKILLS UI ────────────────────────────────────────────────────────────────
@@ -519,6 +525,7 @@ function renderSkills() {
       </div>
     `;
     container.appendChild(div);
+
     const slider = div.querySelector(`#slider-${skill.id}`);
     updateSliderStyle(slider, skill.value);
     slider.addEventListener('input', onSliderInput);
@@ -530,6 +537,7 @@ function updateSliderStyle(slider, v) {
   const pct = (v / 10) * 100;
   const col = colorHex(v);
   const glow = v > 0 ? `rgba(${Object.values(valueColor(v)).join(',')},0.4)` : 'transparent';
+
   slider.style.setProperty('--thumb-color', col);
   slider.style.setProperty('--thumb-border', col);
   slider.style.setProperty('--thumb-glow', glow);
@@ -546,14 +554,16 @@ function onSliderInput(e) {
   if (!skill) return;
 
   skill.value = v;
+
   const valEl = document.getElementById(`val-${id}`);
   valEl.textContent = v;
   valEl.style.color = colorStr(v);
+
   updateSliderStyle(e.target, v);
   drawRadar('radar-canvas', state.skills);
 }
 
-async function onSliderChange(e) {
+function onSliderChange(e) {
   const id = e.target.dataset.id;
   const v = parseInt(e.target.value, 10);
   const skill = state.skills.find(s => s.id === id);
@@ -613,6 +623,7 @@ function deleteTechnique(idx) {
 // ── HISTORY ──────────────────────────────────────────────────────────────────
 function renderHistory() {
   const container = document.getElementById('history-list');
+
   if (!state.history.length) {
     container.innerHTML = '<p class="history-empty">Aucune modification enregistrée.</p>';
     return;
@@ -677,10 +688,17 @@ async function handleRegister() {
 
   const pseudo = regPseudoEl.value.trim();
   const password = regPasswordEl.value;
+
   if (!pseudo || !password) {
     showError(regErrorEl, 'Pseudo et mot de passe requis.');
     return;
   }
+
+  if (normalizePseudo(pseudo).length < 3) {
+    showError(regErrorEl, 'Pseudo trop court.');
+    return;
+  }
+
   if (password.length < 4) {
     showError(regErrorEl, 'Mot de passe trop court (4 caractères min.).');
     return;
@@ -692,9 +710,7 @@ async function handleRegister() {
     email,
     password,
     options: {
-      data: {
-        pseudo
-      }
+      data: { pseudo }
     }
   });
 
@@ -703,8 +719,8 @@ async function handleRegister() {
     return;
   }
 
-  // Connexion automatique derrière
   const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+
   if (signIn.error) {
     showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
     return;
@@ -724,12 +740,14 @@ async function handleLogin() {
 
   const pseudo = loginPseudoEl.value.trim();
   const password = loginPasswordEl.value;
+
   if (!pseudo || !password) {
     showError(loginErrorEl, 'Pseudo et mot de passe requis.');
     return;
   }
 
   const email = pseudoToEmail(pseudo);
+
   const { error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
@@ -746,6 +764,7 @@ async function handleLogin() {
 
 async function handleLogout() {
   if (!supabaseClient) return;
+
   await supabaseClient.auth.signOut();
   state.user = null;
   resetStateToDefaults();
@@ -771,6 +790,7 @@ async function applySession(session) {
   }
 
   const user = session.user;
+
   state.user = {
     id: user.id,
     pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email),
@@ -801,6 +821,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     saveObsBtn.textContent = '✓ Enregistré';
     saveObsBtn.classList.add('saved');
+
     setTimeout(() => {
       saveObsBtn.textContent = 'Enregistrer';
       saveObsBtn.classList.remove('saved');
@@ -836,6 +857,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   addTechniqueConfirm.addEventListener('click', () => {
     const name = newTechniqueName.value.trim();
     const cat = newTechniqueCategory.value;
+
     if (!name) {
       showToast('Entrez un nom de technique');
       return;
@@ -866,7 +888,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
+    navigator.serviceWorker.register('/Gong/sw.js')
       .then(r => console.log('[Gōng] SW enregistré', r.scope))
       .catch(e => console.warn('[Gōng] SW erreur', e));
   });
