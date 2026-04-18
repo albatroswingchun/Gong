@@ -56,8 +56,8 @@ const DEFAULT_TECHNIQUES = [
   { name: 'Tarn Sao', category: 'Wing Chun', mastered: false },
   { name: 'Larp Sao', category: 'Wing Chun', mastered: false },
   { name: 'Larn Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Quan Sao', category: 'Wing Chun', mastered: false },
-  { name: 'Qan Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Kuan Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Kan Sao', category: 'Wing Chun', mastered: false },
 ];
 
 function cloneSkills() {
