@@ -1,1 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="description" content="Gōng — Suivi de progression en arts martiaux" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gōng" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+  <title>Gōng — Arts Martiaux</title>
+</head>
+<body>
+  <div id="app">
 
+    <!-- ── HEADER ── -->
+    <header id="main-header">
+      <div class="header-left">
+        <span class="logo-char">功</span>
+        <span class="logo-text">Gōng</span>
+      </div>
+      <div class="header-right">
+        <span id="user-display" class="user-display hidden"></span>
+        <button id="auth-btn" class="btn-auth">Se connecter</button>
+      </div>
+    </header>
+
+    <!-- ── NAV TABS ── -->
+    <nav id="main-nav">
+      <button class="tab-btn active" data-tab="profil">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span>Profil</span>
+      </button>
+      <button class="tab-btn" data-tab="techniques">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="4" height="4" rx="1"/><rect x="3" y="11" width="4" height="4" rx="1"/><rect x="3" y="17" width="4" height="4" rx="1"/><line x1="10" y1="7" x2="21" y2="7"/><line x1="10" y1="13" x2="21" y2="13"/><line x1="10" y1="19" x2="21" y2="19"/></svg>
+        <span>Techniques</span>
+      </button>
+      <button class="tab-btn" data-tab="historique">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+        <span>Historique</span>
+      </button>
+      <button class="tab-btn" data-tab="notation">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>
+        <span>Notation</span>
+      </button>
+      <button class="tab-btn" data-tab="communaute">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M1 20c0-3 3-5 8-5"/><path d="M23 20c0-3-3-5-8-5"/><path d="M8 20c0-3.3 1.8-6 4-6s4 2.7 4 6"/></svg>
+        <span>Communauté</span>
+      </button>
+    </nav>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main id="main-content">
+
+      <!-- PROFIL TAB -->
+      <section id="tab-profil" class="tab-section active">
+        <div class="radar-container">
+          <canvas id="radar-canvas" width="340" height="340"></canvas>
+        </div>
+        <div class="skills-list" id="skills-list"></div>
+        <div class="observations-block">
+          <label for="observations">Observations &amp; commentaires</label>
+          <textarea id="observations" placeholder="Notes personnelles, sensations, axes d'amélioration…"></textarea>
+          <button id="save-obs-btn" class="btn-save">Enregistrer</button>
+        </div>
+      </section>
+
+      <!-- TECHNIQUES TAB -->
+      <section id="tab-techniques" class="tab-section">
+        <div class="techniques-header">
+          <h2>Techniques</h2>
+          <button id="add-technique-btn" class="btn-icon-add">+</button>
+        </div>
+        <div id="techniques-list" class="techniques-list"></div>
+      </section>
+
+      <!-- HISTORIQUE TAB -->
+      <section id="tab-historique" class="tab-section">
+        <h2>Historique des modifications</h2>
+        <div id="history-list" class="history-list"></div>
+      </section>
+
+      <!-- NOTATION TAB -->
+      <section id="tab-notation" class="tab-section">
+        <h2>Guide de notation</h2>
+        <div class="notation-guide">
+          <div class="notation-scale">
+            <div class="scale-bar">
+              <div class="scale-gradient"></div>
+              <div class="scale-labels">
+                <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+              </div>
+            </div>
+          </div>
+          <div class="notation-items">
+            <div class="notation-item"><span class="note-badge" style="background:#3a3a3a;color:#777">0</span><div><strong>Non maîtrisé</strong><p>Technique inconnue ou jamais pratiquée.</p></div></div>
+            <div class="notation-item"><span class="note-badge" style="background:#3a3a3a;color:#888">1–2</span><div><strong>Débutant</strong><p>Premiers contacts, exécution très approximative.</p></div></div>
+            <div class="notation-item"><span class="note-badge" style="background:#4a4020;color:#b8901a">3–4</span><div><strong>Apprenti</strong><p>Comprend la forme de base, manque de fluidité.</p></div></div>
+            <div class="notation-item"><span class="note-badge" style="background:#5a4f10;color:#d4a017">5–6</span><div><strong>Intermédiaire</strong><p>Exécution correcte en conditions favorables.</p></div></div>
+            <div class="notation-item"><span class="note-badge" style="background:#6b5e0a;color:#e8b520">7–8</span><div><strong>Confirmé</strong><p>Technique solide, adaptable à différentes situations.</p></div></div>
+            <div class="notation-item"><span class="note-badge" style="background:#7d6d05;color:#ffd000">9</span><div><strong>Expert</strong><p>Maîtrise quasi-totale, enseignable.</p></div></div>
+            <div class="notation-item"><span class="note-badge" style="background:#ffd000;color:#111">10</span><div><strong>Maîtrisé</strong><p>Excellence — technique intégrée, instinctive.</p></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COMMUNAUTE TAB -->
+      <section id="tab-communaute" class="tab-section">
+        <h2>Communauté</h2>
+        <p class="community-intro">Comparez votre diagramme avec d'autres pratiquants.</p>
+        <div id="community-list" class="community-list"></div>
+        <div id="compare-radar-container" class="compare-radar hidden">
+          <h3 id="compare-title"></h3>
+          <canvas id="compare-canvas" width="340" height="340"></canvas>
+          <button id="close-compare" class="btn-close">✕ Fermer</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── AUTH MODAL ── -->
+  <div id="auth-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close-btn">✕</button>
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-modal-tab="login">Connexion</button>
+        <button class="modal-tab" data-modal-tab="register">Inscription</button>
+      </div>
+      <div id="modal-login" class="modal-form">
+        <input type="text" id="login-pseudo" placeholder="Pseudo" autocomplete="username" />
+        <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password" />
+        <button id="login-btn" class="btn-primary">Se connecter</button>
+        <p id="login-error" class="form-error hidden"></p>
+      </div>
+      <div id="modal-register" class="modal-form hidden">
+        <input type="text" id="reg-pseudo" placeholder="Pseudo" autocomplete="username" />
+        <input type="email" id="reg-email" placeholder="Email (optionnel)" autocomplete="email" />
+        <input type="password" id="reg-password" placeholder="Mot de passe" autocomplete="new-password" />
+        <button id="register-btn" class="btn-primary">Créer mon compte</button>
+        <p id="reg-error" class="form-error hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD TECHNIQUE MODAL ── -->
+  <div id="technique-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <button class="modal-close" id="technique-modal-close">✕</button>
+      <h3>Nouvelle technique</h3>
+      <input type="text" id="new-technique-name" placeholder="Nom de la technique" />
+      <select id="new-technique-category">
+        <option value="Frappe">Frappe</option>
+        <option value="Coup de pied">Coup de pied</option>
+        <option value="Projection">Projection</option>
+        <option value="Clé">Clé articulaire</option>
+        <option value="Esquive">Esquive / Déplacement</option>
+        <option value="Garde">Garde / Position</option>
+        <option value="Autre">Autre</option>
+      </select>
+      <button id="add-technique-confirm" class="btn-primary">Ajouter</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
