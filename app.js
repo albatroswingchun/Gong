@@ -482,6 +482,24 @@ function scheduleRemoteSync() {
   }, 400);
 }
 
+
+async function verifySupabaseConnection() {
+  if (!supabaseClient) return;
+
+  const { error } = await supabaseClient
+    .from('gong_users')
+    .select('user_id', { count: 'exact', head: true })
+    .limit(1);
+
+  if (error) {
+    console.warn('[Gōng] Vérification Supabase échouée', error);
+    showToast('Connexion Supabase incomplète (table/policies à vérifier).');
+    return;
+  }
+
+  console.info('[Gōng] Supabase connecté (table gong_users accessible).');
+}
+
 // ── SKILLS UI ────────────────────────────────────────────────────────────────
 function renderSkills() {
   const container = document.getElementById('skills-list');
@@ -834,6 +852,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   if (supabaseClient) {
+    await verifySupabaseConnection();
+
     const { data: { session } } = await supabaseClient.auth.getSession();
     await applySession(session);
 
