@@ -80,6 +80,9 @@ let state = {
 let remoteSyncTimer = null;
 let isInitialLoading = false;
 
+const LOCAL_AUTH_ACCOUNTS_KEY = 'gong_local_accounts_v1';
+const LOCAL_STATE_PREFIX = 'gong_local_state_v1:';
+
 // ── DOM ──────────────────────────────────────────────────────────────────────
 const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
@@ -173,6 +176,47 @@ function showToast(msg) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2200);
+}
+
+function loadJsonFromStorage(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (_e) {
+    return fallback;
+  }
+}
+
+function saveJsonToStorage(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
+
+function getLocalAccounts() {
+  const accounts = loadJsonFromStorage(LOCAL_AUTH_ACCOUNTS_KEY, []);
+  return Array.isArray(accounts) ? accounts : [];
+}
+
+function saveLocalAccounts(accounts) {
+  return saveJsonToStorage(LOCAL_AUTH_ACCOUNTS_KEY, accounts);
+}
+
+function localStateKey(userId) {
+  return `${LOCAL_STATE_PREFIX}${userId}`;
+}
+
+function isNetworkFetchError(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  return msg.includes('failed to fetch') || msg.includes('network') || msg.includes('fetch');
+}
+
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function addHistory(type, desc) {
@@ -314,8 +358,8 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.closePath();
-    ctx.strokeStyle = l === levels ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = l === levels ? 1.5 : 1;
+    ctx.strokeStyle = l === levels ? 'rgba(220,220,220,0.35)' : 'rgba(210,210,210,0.18)';
+    ctx.lineWidth = l === levels ? 1.8 : 1.2;
     ctx.stroke();
   }
 
@@ -324,8 +368,8 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle));
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(220,220,220,0.22)';
+    ctx.lineWidth = 1.1;
     ctx.stroke();
   }
 
@@ -366,9 +410,9 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
 
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = colorStr(val);
+    ctx.fillStyle = '#ffd000';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -391,7 +435,7 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.font = '600 11px Barlow, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = skills[i].name === 'Coordination' ? '#f1f1f1' : colorStr(skills[i].value);
+    ctx.fillStyle = skills[i].name === 'Coordination' ? '#f1f1f1' : '#cfcfcf';
     const label = skills[i].name === 'Coordination' ? 'Coord.' : skills[i].name.toUpperCase();
     ctx.fillText(label, x, y);
   }
@@ -480,12 +524,51 @@ async function syncRemoteUserState() {
   }
 }
 
-function scheduleRemoteSync() {
-  if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
+function loadLocalUserState() {
+  if (!isLoggedIn()) return;
+
+  const data = loadJsonFromStorage(localStateKey(state.user.id), null);
+  if (!data) return;
+
+  state.skills = normalizeSkills(data.skills);
+  state.techniques = normalizeTechniques(data.techniques);
+  state.history = Array.isArray(data.history) ? data.history : [];
+  state.observations = typeof data.observations === 'string' ? data.observations : '';
+  if (obsEl) obsEl.value = state.observations;
+
+  renderSkills();
+  renderTechniques();
+  renderHistory();
+  drawRadar('radar-canvas', state.skills);
+}
+
+function syncLocalUserState() {
+  if (!isLoggedIn()) return;
+  saveJsonToStorage(localStateKey(state.user.id), {
+    pseudo: state.user.pseudo,
+    skills: state.skills,
+    techniques: state.techniques,
+    history: state.history,
+    observations: state.observations,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+function syncCurrentUserState() {
+  if (!isLoggedIn()) return;
+  if (state.user.provider === 'supabase') {
+    syncRemoteUserState();
+    return;
+  }
+  syncLocalUserState();
+}
+
+function scheduleStateSync() {
+  if (!isLoggedIn() || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
 
   remoteSyncTimer = setTimeout(() => {
-    syncRemoteUserState();
+    syncCurrentUserState();
   }, 400);
 }
 
@@ -571,7 +654,7 @@ function onSliderChange(e) {
 
   addHistory('skill', `${skill.name} → ${v}/10`);
   renderHistory();
-  scheduleRemoteSync();
+  scheduleStateSync();
 }
 
 // ── TECHNIQUES UI ────────────────────────────────────────────────────────────
@@ -580,20 +663,20 @@ function renderTechniques() {
   container.innerHTML = '';
 
   if (!state.techniques.length) {
-    container.innerHTML = '<p style="color:var(--text-3);font-size:.88rem;text-align:center;padding:30px 0">Aucune technique. Appuyez sur + pour en ajouter.</p>';
+    container.innerHTML = '<p class="techniques-empty">Aucune technique. Appuyez sur + pour en ajouter.</p>';
     return;
   }
 
   state.techniques.forEach((tech, idx) => {
     const div = document.createElement('div');
-    div.className = 'technique-item';
+    div.className = `technique-item ${tech.mastered ? 'is-mastered' : ''}`;
     div.innerHTML = `
-      <div class="technique-check ${tech.mastered ? 'mastered' : ''}" data-idx="${idx}"></div>
-      <div class="technique-info">
-        <div class="technique-name">${tech.name}</div>
-        <div class="technique-category">${tech.category}</div>
-      </div>
       <button class="technique-delete" data-idx="${idx}" title="Supprimer">✕</button>
+      <div class="technique-category">${tech.category}</div>
+      <div class="technique-name">${tech.name}</div>
+      <button class="technique-check ${tech.mastered ? 'mastered' : ''}" data-idx="${idx}">
+        ${tech.mastered ? '✓ Maîtrisée' : 'Marquer maîtrisée'}
+      </button>
     `;
 
     div.querySelector('.technique-check').addEventListener('click', () => toggleTechnique(idx));
@@ -608,7 +691,7 @@ function toggleTechnique(idx) {
   addHistory('tech', `${state.techniques[idx].name} marquée ${status}`);
   renderTechniques();
   renderHistory();
-  scheduleRemoteSync();
+  scheduleStateSync();
 }
 
 function deleteTechnique(idx) {
@@ -617,7 +700,7 @@ function deleteTechnique(idx) {
   addHistory('tech', `Technique supprimée : ${name}`);
   renderTechniques();
   renderHistory();
-  scheduleRemoteSync();
+  scheduleStateSync();
 }
 
 // ── HISTORY ──────────────────────────────────────────────────────────────────
@@ -677,14 +760,65 @@ function showComparison(other) {
   drawRadar('compare-canvas', state.skills, other.skills);
 }
 
+async function linkLocalAccountToSupabase(pseudo, password) {
+  if (!supabaseClient || !state.user || state.user.provider !== 'local') return false;
+
+  const email = pseudoToEmail(pseudo);
+  const localSnapshot = {
+    skills: deepClone(state.skills),
+    techniques: deepClone(state.techniques),
+    history: deepClone(state.history),
+    observations: state.observations
+  };
+
+  let signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (signIn.error) {
+    if (isNetworkFetchError(signIn.error)) return false;
+
+    const signUp = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: { data: { pseudo } }
+    });
+
+    if (signUp.error && !String(signUp.error.message || '').toLowerCase().includes('already')) {
+      return false;
+    }
+
+    signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (signIn.error) return false;
+  }
+
+  const session = signIn.data?.session;
+  const user = session?.user;
+  if (!user) return false;
+
+  state.user = {
+    id: user.id,
+    pseudo: user.user_metadata?.pseudo || pseudo,
+    email: user.email,
+    provider: 'supabase'
+  };
+
+  state.skills = normalizeSkills(localSnapshot.skills);
+  state.techniques = normalizeTechniques(localSnapshot.techniques);
+  state.history = Array.isArray(localSnapshot.history) ? localSnapshot.history : [];
+  state.observations = typeof localSnapshot.observations === 'string' ? localSnapshot.observations : '';
+  if (obsEl) obsEl.value = state.observations;
+
+  updateAuthUI();
+  renderSkills();
+  renderTechniques();
+  renderHistory();
+  drawRadar('radar-canvas', state.skills);
+  await syncRemoteUserState();
+  showToast('Compte cloud synchronisé.');
+  return true;
+}
+
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 async function handleRegister() {
   hideError(regErrorEl);
-
-  if (!supabaseClient) {
-    showError(regErrorEl, 'Supabase non configuré.');
-    return;
-  }
 
   const pseudo = regPseudoEl.value.trim();
   const password = regPasswordEl.value;
@@ -704,39 +838,67 @@ async function handleRegister() {
     return;
   }
 
-  const email = pseudoToEmail(pseudo);
+  const normalized = normalizePseudo(pseudo);
+  const accounts = getLocalAccounts();
+  const localExists = accounts.some(a => a.pseudoNormalized === normalized);
+  if (localExists) {
+    showError(regErrorEl, 'Ce pseudo existe déjà en mode local.');
+    return;
+  }
 
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { pseudo }
+  if (supabaseClient) {
+    const email = pseudoToEmail(pseudo);
+    const { error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { pseudo }
+      }
+    });
+
+    if (!error) {
+      const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (!signIn.error) {
+        showToast(`Compte créé. Bienvenue, ${pseudo} !`);
+        closeModal('auth-modal');
+        return;
+      }
+      if (!isNetworkFetchError(signIn.error)) {
+        showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
+        return;
+      }
+    } else if (!isNetworkFetchError(error)) {
+      showError(regErrorEl, error.message || 'Inscription impossible.');
+      return;
     }
-  });
-
-  if (error) {
-    showError(regErrorEl, error.message || 'Inscription impossible.');
-    return;
   }
 
-  const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (signIn.error) {
-    showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
-    return;
-  }
-
-  showToast(`Compte créé. Bienvenue, ${pseudo} !`);
+  const localUser = {
+    id: `local-${normalized}`,
+    pseudo,
+    pseudoNormalized: normalized,
+    password,
+    created_at: new Date().toISOString(),
+  };
+  accounts.push(localUser);
+  saveLocalAccounts(accounts);
+  state.user = {
+    id: localUser.id,
+    pseudo: localUser.pseudo,
+    email: pseudoToEmail(localUser.pseudo),
+    provider: 'local'
+  };
+  resetStateToDefaults();
+  updateAuthUI();
+  loadLocalUserState();
+  syncLocalUserState();
+  showToast(`Compte local créé. Bienvenue, ${pseudo} !`);
   closeModal('auth-modal');
+  linkLocalAccountToSupabase(pseudo, password);
 }
 
 async function handleLogin() {
   hideError(loginErrorEl);
-
-  if (!supabaseClient) {
-    showError(loginErrorEl, 'Supabase non configuré.');
-    return;
-  }
 
   const pseudo = loginPseudoEl.value.trim();
   const password = loginPasswordEl.value;
@@ -746,26 +908,52 @@ async function handleLogin() {
     return;
   }
 
-  const email = pseudoToEmail(pseudo);
+  if (supabaseClient) {
+    const email = pseudoToEmail(pseudo);
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
+    if (!error) {
+      closeModal('auth-modal');
+      showToast(`Bienvenue, ${pseudo} !`);
+      return;
+    }
 
-  if (error) {
-    showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
+    if (!isNetworkFetchError(error)) {
+      showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
+      return;
+    }
+  }
+
+  const normalized = normalizePseudo(pseudo);
+  const account = getLocalAccounts().find(a => a.pseudoNormalized === normalized && a.password === password);
+  if (!account) {
+    showError(loginErrorEl, 'Connexion impossible (vérifiez le pseudo, mot de passe, ou réseau Supabase).');
     return;
   }
 
+  state.user = {
+    id: account.id,
+    pseudo: account.pseudo,
+    email: pseudoToEmail(account.pseudo),
+    provider: 'local'
+  };
+  resetStateToDefaults();
+  updateAuthUI();
+  isInitialLoading = true;
+  loadLocalUserState();
+  isInitialLoading = false;
   closeModal('auth-modal');
-  showToast(`Bienvenue, ${pseudo} !`);
+  showToast(`Bienvenue (mode local), ${account.pseudo} !`);
+  linkLocalAccountToSupabase(account.pseudo, password);
 }
 
 async function handleLogout() {
-  if (!supabaseClient) return;
-
-  await supabaseClient.auth.signOut();
+  if (state.user?.provider === 'supabase' && supabaseClient) {
+    await supabaseClient.auth.signOut();
+  }
   state.user = null;
   resetStateToDefaults();
   updateAuthUI();
@@ -778,6 +966,9 @@ async function handleLogout() {
 
 async function applySession(session) {
   if (!session?.user) {
+    if (state.user?.provider === 'local') {
+      return;
+    }
     state.user = null;
     resetStateToDefaults();
     if (obsEl) obsEl.value = '';
@@ -794,7 +985,8 @@ async function applySession(session) {
   state.user = {
     id: user.id,
     pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email),
-    email: user.email
+    email: user.email,
+    provider: 'supabase'
   };
 
   updateAuthUI();
@@ -817,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.observations = obsEl.value;
     addHistory('obs', 'Observations mises à jour');
     renderHistory();
-    scheduleRemoteSync();
+    scheduleStateSync();
 
     saveObsBtn.textContent = '✓ Enregistré';
     saveObsBtn.classList.add('saved');
@@ -867,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     addHistory('tech', `Nouvelle technique ajoutée : ${name}`);
     renderTechniques();
     renderHistory();
-    scheduleRemoteSync();
+    scheduleStateSync();
     closeModal('technique-modal');
     newTechniqueName.value = '';
     showToast(`"${name}" ajoutée`);
@@ -888,8 +1080,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 /*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Gong/sw.js')
+    navigator.serviceWorker.register('/Gong/service-worker.js')
       .then(r => console.log('[Gōng] SW enregistré', r.scope))
       .catch(e => console.warn('[Gōng] SW erreur', e));
   });
 }
+*/
