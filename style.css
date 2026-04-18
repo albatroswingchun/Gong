@@ -61,12 +61,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg-1); }
 ::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 2px; }
 
-/* ── HEADER ── */
 #main-header {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -148,7 +146,6 @@ body {
   color: #e55;
 }
 
-/* ── NAV ── */
 #main-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
@@ -208,7 +205,6 @@ body {
   color: var(--text-1);
 }
 
-/* ── MAIN ── */
 #main-content {
   margin-top: var(--header-h);
   margin-bottom: var(--nav-h);
@@ -219,7 +215,6 @@ body {
 .tab-section { display: none; }
 .tab-section.active { display: block; }
 
-/* ── RADAR ── */
 .radar-container {
   display: flex;
   justify-content: center;
@@ -234,7 +229,6 @@ body {
   filter: drop-shadow(0 0 24px rgba(255,208,0,0.15));
 }
 
-/* ── SKILLS ── */
 .skills-list {
   display: flex;
   flex-direction: column;
@@ -308,7 +302,6 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-/* ── OBSERVATIONS ── */
 .observations-block {
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -364,7 +357,6 @@ textarea::placeholder {
   color: var(--yellow-0);
 }
 
-/* ── TECHNIQUES ── */
 .techniques-header {
   display: flex;
   align-items: center;
@@ -488,7 +480,6 @@ textarea::placeholder {
   color: rgba(255,255,255,0.9);
 }
 
-/* ── HISTORIQUE ── */
 .history-list {
   display: flex;
   flex-direction: column;
@@ -527,7 +518,6 @@ textarea::placeholder {
   padding: 40px 0;
 }
 
-/* ── NOTATION ── */
 .notation-guide {
   display: flex;
   flex-direction: column;
@@ -599,7 +589,6 @@ textarea::placeholder {
   margin: 0;
 }
 
-/* ── COMMUNAUTÉ ── */
 .community-intro {
   font-size: .88rem;
   color: var(--text-2);
@@ -739,11 +728,11 @@ textarea::placeholder {
 }
 
 .install-btn {
-  position: fixed;
-  left: 50%;
-  bottom: 92px;
-  transform: translateX(-50%);
-  z-index: 1200;
+  position: static;
+  display: block;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin: 24px auto calc(var(--nav-h) + 24px);
   border: 1px solid rgba(255, 208, 0, 0.28);
   background: rgba(20, 20, 20, 0.92);
   color: #ffd000;
@@ -760,7 +749,6 @@ textarea::placeholder {
   display: none;
 }
 
-/* ── MODALS ── */
 .modal {
   position: fixed;
   inset: 0;
@@ -891,7 +879,6 @@ select {
   display: none !important;
 }
 
-/* ── RESPONSIVE ── */
 @media (min-width: 640px) {
   #main-content {
     max-width: 900px;
@@ -916,7 +903,6 @@ select {
   }
 }
 
-/* ── TOAST ── */
 .toast {
   position: fixed;
   bottom: calc(var(--nav-h) + 12px);
