@@ -60,7 +60,8 @@ Dans **SQL Editor**, exécutez :
 
 ```sql
 create table if not exists gong_users (
-  pseudo text primary key,
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  pseudo text not null,
   skills jsonb not null default '[]'::jsonb,
   techniques jsonb not null default '[]'::jsonb,
   history jsonb not null default '[]'::jsonb,
@@ -74,12 +75,19 @@ create table if not exists gong_users (
 ```sql
 alter table gong_users enable row level security;
 
--- Exemple simple (dev): autoriser lecture/écriture à tous les utilisateurs anonymes.
--- IMPORTANT: pour la prod, remplacez par des policies strictes basées sur auth.uid().
-create policy "gong_users_public_rw"
-on gong_users for all
-using (true)
-with check (true);
+-- Recommandé: chaque utilisateur ne peut lire/écrire que sa propre ligne.
+create policy "gong_users_owner_select"
+on gong_users for select
+using (auth.uid() = user_id);
+
+create policy "gong_users_owner_insert"
+on gong_users for insert
+with check (auth.uid() = user_id);
+
+create policy "gong_users_owner_update"
+on gong_users for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
 ```
 
 ### 4) Ajouter le client Supabase dans `index.html`
@@ -98,7 +106,7 @@ window.GONG_SUPABASE_ANON_KEY = '<your-anon-key>';
 ```
 
 ### 6) Comportement déjà branché dans l'app
-- Au login local: tentative de chargement distant par `pseudo`.
+- Au login: chargement distant par `user_id` (UUID Supabase Auth).
 - À chaque changement: sauvegarde locale + sync distante asynchrone (`upsert`).
 - Si Supabase n'est pas configuré: l'app reste 100% locale.
 
@@ -111,13 +119,13 @@ Exemple de sauvegarde :
 ```js
 async function saveRemoteState(userId, state) {
   await sb.from('gong_users').upsert({
-    pseudo: userId,
+    user_id: userId,
     skills: state.skills,
     techniques: state.techniques,
     history: state.history,
     observations: state.observations,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'pseudo' });
+  }, { onConflict: 'user_id' });
 }
 ```
 
@@ -135,3 +143,11 @@ async function saveRemoteState(userId, state) {
 - PWA : installable sans Play Store ni App Store
 - 100% HTML/CSS/JS vanilla, aucune dépendance externe
 - Fonctionne hors ligne après la première visite
+
+## Dépannage Supabase (si vous voyez un toast d'erreur)
+
+1. Vérifiez que la table `gong_users` existe bien (erreur `42P01` sinon).
+2. Vérifiez que RLS est activé **et** que les policies owner (`auth.uid() = user_id`) sont créées (erreur `42501` sinon).
+3. Vérifiez que l'utilisateur est connecté dans l'app avant de tester la sync.
+4. Vérifiez que `window.GONG_SUPABASE_URL` et `window.GONG_SUPABASE_ANON_KEY` pointent vers le bon projet.
+

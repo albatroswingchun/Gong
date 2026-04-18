@@ -482,6 +482,32 @@ function scheduleRemoteSync() {
   }, 400);
 }
 
+
+async function verifySupabaseConnection() {
+  if (!supabaseClient || !isLoggedIn()) return;
+
+  const { error } = await supabaseClient
+    .from('gong_users')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('user_id', state.user.id)
+    .limit(1);
+
+  if (error) {
+    console.warn('[Gōng] Vérification Supabase échouée', error);
+
+    if (error.code === '42P01') {
+      showToast('Table Supabase manquante: créez gong_users dans SQL Editor.');
+    } else if (error.code === '42501') {
+      showToast("RLS Supabase bloque l'accès: vérifiez les policies owner.");
+    } else {
+      showToast('Sync Supabase indisponible (config incomplète).');
+    }
+    return;
+  }
+
+  console.info('[Gōng] Supabase connecté (table gong_users accessible).');
+}
+
 // ── SKILLS UI ────────────────────────────────────────────────────────────────
 function renderSkills() {
   const container = document.getElementById('skills-list');
@@ -760,6 +786,8 @@ async function applySession(session) {
   };
 
   updateAuthUI();
+
+  await verifySupabaseConnection();
 
   isInitialLoading = true;
   await loadRemoteUserState();
