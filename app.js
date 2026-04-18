@@ -4,7 +4,6 @@
 
 'use strict';
 
-// ── CONFIG ───────────────────────────────────────────────────────────────────
 const SUPABASE_URL = window.GONG_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.GONG_SUPABASE_ANON_KEY || '';
 
@@ -23,7 +22,6 @@ const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
     })
   : null;
 
-// ── DEFAULT DATA ─────────────────────────────────────────────────────────────
 const DEFAULT_SKILLS = [
   { id: 'relachement', name: 'Relâchement', value: 0 },
   { id: 'precision', name: 'Précision', value: 0 },
@@ -59,10 +57,10 @@ const DEFAULT_TECHNIQUES = [
   { name: 'Kuan Sao', category: 'Wing Chun', mastered: false, locked: true },
   { name: 'Kan Sao', category: 'Wing Chun', mastered: false, locked: true },
 
-  { name: 'Siu Lim Tao', category: 'Formes', mastered: false, locked: true },
-  { name: 'Chum Kiu', category: 'Formes', mastered: false, locked: true },
+  { name: 'Shil Lim Tao', category: 'Formes', mastered: false, locked: true },
+  { name: 'Chum Kil', category: 'Formes', mastered: false, locked: true },
   { name: 'Bil Jee', category: 'Formes', mastered: false, locked: true },
-  { name: 'Siu Lim Tao Avancée', category: 'Formes', mastered: false, locked: true },
+  { name: 'Shil Lim Tao Avancée', category: 'Formes', mastered: false, locked: true },
   { name: 'Mannequin de bois - 108 Mouvements', category: 'Formes', mastered: false, locked: true },
   { name: 'Arme - Couteaux Papillons', category: 'Formes', mastered: false, locked: true },
   { name: 'Arme - Bâton Long', category: 'Formes', mastered: false, locked: true },
@@ -87,6 +85,9 @@ function legacyTechniqueName(name) {
   const normalized = String(name || '').trim();
   if (normalized === 'Quan Sao') return 'Kuan Sao';
   if (normalized === 'Qan Sao') return 'Kan Sao';
+  if (normalized === 'Siu Lim Tao') return 'Shil Lim Tao';
+  if (normalized === 'Chum Kiu') return 'Chum Kil';
+  if (normalized === 'Siu Lim Tao Avancée') return 'Shil Lim Tao Avancée';
   return normalized;
 }
 
@@ -150,6 +151,7 @@ const loginPasswordEl = document.getElementById('login-password');
 const loginBtnEl = document.getElementById('login-btn');
 const loginErrorEl = document.getElementById('login-error');
 const regPseudoEl = document.getElementById('reg-pseudo');
+const regEmailEl = document.getElementById('reg-email');
 const regPasswordEl = document.getElementById('reg-password');
 const registerBtnEl = document.getElementById('register-btn');
 const regErrorEl = document.getElementById('reg-error');
@@ -290,15 +292,59 @@ function resetStateToDefaults() {
 function normalizePseudo(pseudo) {
   return String(pseudo || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9._-]/g, '');
 }
-function pseudoToEmail(pseudo) { return `${normalizePseudo(pseudo)}@gong.app`; }
-function safePseudoFromEmail(email) { return String(email || '').split('@')[0] || ''; }
-function showError(el, msg) { if (!el) return; el.textContent = msg; el.classList.remove('hidden'); }
-function hideError(el) { if (!el) return; el.textContent = ''; el.classList.add('hidden'); }
-function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
-function addHistory(type, desc) { const now = new Date(); const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); state.history.unshift({ type, desc, date: dateStr }); if (state.history.length > 200) state.history.pop(); }
-function isLoggedIn() { return !!state.user?.id; }
-function openModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
-function closeModal(id) { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }
+
+function pseudoToEmail(pseudo) {
+  return `${normalizePseudo(pseudo)}@gong.app`;
+}
+
+function safePseudoFromEmail(email) {
+  return String(email || '').split('@')[0] || '';
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function showError(el, msg) {
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function hideError(el) {
+  if (!el) return;
+  el.textContent = '';
+  el.classList.add('hidden');
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+function addHistory(type, desc) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  state.history.unshift({ type, desc, date: dateStr });
+  if (state.history.length > 200) state.history.pop();
+}
+
+function isLoggedIn() {
+  return !!state.user?.id;
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('hidden');
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('hidden');
+}
 
 function updateAuthUI() {
   if (state.user) {
@@ -697,11 +743,12 @@ async function handleRegister() {
   hideError(regErrorEl);
   if (!supabaseClient) { showError(regErrorEl, 'Supabase non configuré.'); return; }
   const pseudo = regPseudoEl?.value.trim() || '';
+  const email = regEmailEl?.value.trim().toLowerCase() || '';
   const password = regPasswordEl?.value || '';
-  if (!pseudo || !password) { showError(regErrorEl, 'Pseudo et mot de passe requis.'); return; }
+  if (!pseudo || !email || !password) { showError(regErrorEl, 'Pseudo, email et mot de passe requis.'); return; }
+  if (!isValidEmail(email)) { showError(regErrorEl, 'Adresse email invalide.'); return; }
   if (normalizePseudo(pseudo).length < 3) { showError(regErrorEl, 'Pseudo trop court.'); return; }
   if (password.length < 4) { showError(regErrorEl, 'Mot de passe trop court (4 caractères min.).'); return; }
-  const email = pseudoToEmail(pseudo);
   const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { pseudo } } });
   if (error) { showError(regErrorEl, error.message || 'Inscription impossible.'); return; }
   const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -714,14 +761,14 @@ async function handleRegister() {
 async function handleLogin() {
   hideError(loginErrorEl);
   if (!supabaseClient) { showError(loginErrorEl, 'Supabase non configuré.'); return; }
-  const pseudo = loginPseudoEl?.value.trim() || '';
+  const identifier = loginPseudoEl?.value.trim() || '';
   const password = loginPasswordEl?.value || '';
-  if (!pseudo || !password) { showError(loginErrorEl, 'Pseudo et mot de passe requis.'); return; }
-  const email = pseudoToEmail(pseudo);
+  if (!identifier || !password) { showError(loginErrorEl, 'Email et mot de passe requis.'); return; }
+  const email = identifier.includes('@') ? identifier.toLowerCase() : pseudoToEmail(identifier);
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) { showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.'); return; }
+  if (error) { showError(loginErrorEl, 'Identifiant ou mot de passe incorrect.'); return; }
   closeModal('auth-modal');
-  showToast(`Bienvenue, ${pseudo} !`);
+  showToast('Connexion réussie');
 }
 
 async function handleLogout() {
