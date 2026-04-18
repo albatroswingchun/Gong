@@ -16,6 +16,43 @@ const DEFAULT_SKILLS = [
   { id: 'technique',  name: 'Technique',      value: 0 },
 ];
 
+const DEFAULT_TECHNIQUES = [
+  { name: 'Pak Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Pak Sao Latéral', category: 'Wing Chun', mastered: false },
+  { name: 'Pak Sao Inversé', category: 'Wing Chun', mastered: false },
+  { name: 'Tan Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Bon Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Jut Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Jut Sao Bas', category: 'Wing Chun', mastered: false },
+  { name: 'Jut Sao Intérieur', category: 'Wing Chun', mastered: false },
+  { name: 'Bil Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Fook Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Garn Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Gum Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Fut Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Chuen Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Huen Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Huen Sao Large', category: 'Wing Chun', mastered: false },
+  { name: 'Huen Sao Ouverture', category: 'Wing Chun', mastered: false },
+  { name: 'Wu Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Tarn Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Larp Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Larn Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Quan Sao', category: 'Wing Chun', mastered: false },
+  { name: 'Qan Sao', category: 'Wing Chun', mastered: false },
+];
+
+const SUPABASE_URL = window.GONG_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = window.GONG_SUPABASE_ANON_KEY || '';
+const SUPABASE_TABLE = 'gong_users';
+const supabaseClient = (
+  window.supabase &&
+  SUPABASE_URL &&
+  SUPABASE_ANON_KEY
+) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let remoteSyncTimer = null;
+
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
   user: null,           // { pseudo, passwordHash }
@@ -36,11 +73,64 @@ function loadState() {
     }
   } catch(e) { /* ignore */ }
   if (!state.skills.length) state.skills = DEFAULT_SKILLS.map(s => ({ ...s }));
+  if (!state.techniques.length) state.techniques = DEFAULT_TECHNIQUES.map(t => ({ ...t }));
   if (!state.users) state.users = [];
 }
 
 function saveState() {
   localStorage.setItem('gong_state', JSON.stringify(state));
+  scheduleRemoteSync();
+}
+
+function isSupabaseReady() {
+  return !!(supabaseClient && state.user?.pseudo);
+}
+
+async function loadRemoteUserState(pseudo) {
+  if (!supabaseClient || !pseudo) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from(SUPABASE_TABLE)
+      .select('skills, techniques, history, observations')
+      .eq('pseudo', pseudo)
+      .maybeSingle();
+    if (error || !data) return;
+    if (Array.isArray(data.skills) && data.skills.length) state.skills = data.skills;
+    if (Array.isArray(data.techniques) && data.techniques.length) state.techniques = data.techniques;
+    if (Array.isArray(data.history)) state.history = data.history;
+    if (typeof data.observations === 'string') state.observations = data.observations;
+    saveState();
+  } catch (e) {
+    console.warn('[Gōng] Supabase load error', e);
+  }
+}
+
+async function syncRemoteUserState() {
+  if (!isSupabaseReady()) return;
+  try {
+    const payload = {
+      pseudo: state.user.pseudo,
+      skills: state.skills,
+      techniques: state.techniques,
+      history: state.history,
+      observations: state.observations,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabaseClient
+      .from(SUPABASE_TABLE)
+      .upsert(payload, { onConflict: 'pseudo' });
+    if (error) console.warn('[Gōng] Supabase sync error', error);
+  } catch (e) {
+    console.warn('[Gōng] Supabase sync exception', e);
+  }
+}
+
+function scheduleRemoteSync() {
+  if (!isSupabaseReady()) return;
+  if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
+  remoteSyncTimer = setTimeout(() => {
+    syncRemoteUserState();
+  }, 600);
 }
 
 // ── SIMPLE HASH (non-cryptographic, pour démo locale) ───────────────────────
@@ -499,6 +589,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSkills();
     drawRadar('radar-canvas', state.skills);
     obsEl.value = state.observations || '';
+    await loadRemoteUserState(pseudo);
+    renderSkills();
+    drawRadar('radar-canvas', state.skills);
+    obsEl.value = state.observations || '';
     showToast(`Bienvenue, ${pseudo} !`);
   });
 
@@ -516,14 +610,14 @@ document.addEventListener('DOMContentLoaded', () => {
       pseudo,
       passwordHash: hash,
       skills: DEFAULT_SKILLS.map(s => ({ ...s })),
-      techniques: [],
+      techniques: DEFAULT_TECHNIQUES.map(t => ({ ...t })),
       history: [],
       observations: '',
     };
     state.users.push(newUser);
     state.user = { pseudo };
     state.skills = newUser.skills;
-    state.techniques = [];
+    state.techniques = DEFAULT_TECHNIQUES.map(t => ({ ...t }));
     state.history = [];
     state.observations = '';
     saveState();
@@ -532,6 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSkills();
     drawRadar('radar-canvas', state.skills);
     obsEl.value = '';
+    scheduleRemoteSync();
     showToast(`Compte créé. Bienvenue, ${pseudo} !`);
   });
 
