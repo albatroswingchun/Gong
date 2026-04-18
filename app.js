@@ -128,7 +128,6 @@ function getFormsSummary(techniques) {
   };
 }
 
-// ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
   user: null,
   skills: cloneSkills(),
@@ -142,176 +141,55 @@ let remoteSyncTimer = null;
 let isInitialLoading = false;
 let deferredInstallPrompt = null;
 
-// ── DOM ──────────────────────────────────────────────────────────────────────
 const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
 const userDisplay = document.getElementById('user-display');
-
 const modalCloseBtn = document.getElementById('modal-close-btn');
-
 const loginPseudoEl = document.getElementById('login-pseudo');
 const loginPasswordEl = document.getElementById('login-password');
 const loginBtnEl = document.getElementById('login-btn');
 const loginErrorEl = document.getElementById('login-error');
-
 const regPseudoEl = document.getElementById('reg-pseudo');
 const regPasswordEl = document.getElementById('reg-password');
 const registerBtnEl = document.getElementById('register-btn');
 const regErrorEl = document.getElementById('reg-error');
-
 const saveObsBtn = document.getElementById('save-obs-btn');
 const addTechniqueBtn = document.getElementById('add-technique-btn');
 const techniqueModalClose = document.getElementById('technique-modal-close');
 const addTechniqueConfirm = document.getElementById('add-technique-confirm');
 const newTechniqueName = document.getElementById('new-technique-name');
 const newTechniqueCategory = document.getElementById('new-technique-category');
-
 const compareRadarContainer = document.getElementById('compare-radar-container');
 const closeCompareBtn = document.getElementById('close-compare');
 const compareFormsEl = document.getElementById('compare-forms');
-
 const installBtn = document.getElementById('install-btn');
 
-// ── HELPERS ──────────────────────────────────────────────────────────────────
 function injectDynamicStyles() {
   if (document.getElementById('gong-dynamic-styles')) return;
-
   const style = document.createElement('style');
   style.id = 'gong-dynamic-styles';
   style.textContent = `
-    .technique-filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 0 0 18px 0;
-    }
-
-    .technique-filter-btn {
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.03);
-      color: rgba(255,255,255,0.78);
-      border-radius: 999px;
-      padding: 8px 14px;
-      font-size: 0.82rem;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      transition: all 0.18s ease;
-    }
-
-    .technique-filter-btn:hover {
-      border-color: rgba(255, 208, 0, 0.28);
-      color: #f0f0f0;
-    }
-
-    .technique-filter-btn.active {
-      background: rgba(255, 208, 0, 0.12);
-      color: #ffd000;
-      border-color: rgba(255, 208, 0, 0.3);
-      box-shadow: 0 0 0 1px rgba(255, 208, 0, 0.08) inset;
-    }
-
-    .technique-item.locked .technique-delete {
-      display: none !important;
-    }
-
-    .compare-forms {
-      margin-top: 22px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .compare-forms-header,
-    .compare-form-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1.6fr) 110px 110px;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .compare-forms-header {
-      color: rgba(255,255,255,0.6);
-      font-size: 0.8rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .compare-form-row {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      padding: 12px 14px;
-    }
-
-    .compare-form-name {
-      color: #f4f4f4;
-      font-weight: 600;
-      font-size: 0.92rem;
-    }
-
-    .compare-form-status {
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 36px;
-      border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      padding: 0 12px;
-      text-align: center;
-    }
-
-    .compare-form-status.ok {
-      background: rgba(255, 208, 0, 0.14);
-      border: 1px solid rgba(255, 208, 0, 0.25);
-      color: #ffd000;
-    }
-
-    .compare-form-status.no {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.65);
-    }
-
-    .community-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: center;
-    }
-
-    .community-item-main {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .community-stats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .forms-count {
-      font-weight: 700;
-      color: #ffd000;
-    }
-
-    @media (max-width: 640px) {
-      .compare-forms-header,
-      .compare-form-row {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .compare-forms-header {
-        display: none;
-      }
-
-      .compare-form-row {
-        gap: 8px;
-      }
+    .technique-filters { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 18px 0; }
+    .technique-filter-btn { border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.78); border-radius:999px; padding:8px 14px; font-size:0.82rem; letter-spacing:0.04em; cursor:pointer; transition:all 0.18s ease; }
+    .technique-filter-btn:hover { border-color:rgba(255,208,0,0.28); color:#f0f0f0; }
+    .technique-filter-btn.active { background:rgba(255,208,0,0.12); color:#ffd000; border-color:rgba(255,208,0,0.3); box-shadow:0 0 0 1px rgba(255,208,0,0.08) inset; }
+    .technique-item.locked .technique-delete { display:none !important; }
+    .compare-forms { margin-top:22px; display:grid; gap:10px; }
+    .compare-forms-header, .compare-form-row { display:grid; grid-template-columns:minmax(0,1.6fr) 110px 110px; gap:12px; align-items:center; }
+    .compare-forms-header { color:rgba(255,255,255,0.6); font-size:0.8rem; letter-spacing:0.04em; text-transform:uppercase; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08); }
+    .compare-form-row { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:12px 14px; }
+    .compare-form-name { color:#f4f4f4; font-weight:600; font-size:0.92rem; }
+    .compare-form-status { display:inline-flex; justify-content:center; align-items:center; min-height:36px; border-radius:999px; font-size:0.82rem; font-weight:700; letter-spacing:0.02em; padding:0 12px; text-align:center; }
+    .compare-form-status.ok { background:rgba(255,208,0,0.14); border:1px solid rgba(255,208,0,0.25); color:#ffd000; }
+    .compare-form-status.no { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:rgba(255,255,255,0.65); }
+    .community-item { display:flex; justify-content:space-between; gap:16px; align-items:center; }
+    .community-item-main { display:flex; flex-direction:column; gap:6px; }
+    .community-stats { display:flex; flex-wrap:wrap; gap:12px; }
+    .forms-count { font-weight:700; color:#ffd000; }
+    @media (max-width:640px) {
+      .compare-forms-header, .compare-form-row { grid-template-columns:minmax(0,1fr); }
+      .compare-forms-header { display:none; }
+      .compare-form-row { gap:8px; }
     }
   `;
   document.head.appendChild(style);
@@ -319,11 +197,9 @@ function injectDynamicStyles() {
 
 function ensureTechniqueFiltersContainer() {
   if (document.getElementById('technique-filters')) return;
-
   const techniquesSection = document.getElementById('tab-techniques');
   const techniquesHeader = techniquesSection?.querySelector('.techniques-header');
   if (!techniquesSection || !techniquesHeader) return;
-
   const filters = document.createElement('div');
   filters.id = 'technique-filters';
   filters.className = 'technique-filters';
@@ -332,11 +208,7 @@ function ensureTechniqueFiltersContainer() {
 
 function ensureFormesOption() {
   if (!newTechniqueCategory) return;
-
-  const exists = Array.from(newTechniqueCategory.options).some(
-    (opt) => opt.value === 'Formes'
-  );
-
+  const exists = Array.from(newTechniqueCategory.options).some((opt) => opt.value === 'Formes');
   if (!exists) {
     const opt = document.createElement('option');
     opt.value = 'Formes';
@@ -348,7 +220,6 @@ function ensureFormesOption() {
 function getTechniqueCategories() {
   const seen = new Set();
   const categories = [];
-
   state.techniques.forEach((tech) => {
     const category = String(tech.category || 'Autre').trim() || 'Autre';
     if (!seen.has(category)) {
@@ -356,33 +227,19 @@ function getTechniqueCategories() {
       categories.push(category);
     }
   });
-
   return categories;
 }
 
 function renderTechniqueFilters() {
   ensureTechniqueFiltersContainer();
-
   const container = document.getElementById('technique-filters');
   if (!container) return;
-
   const categories = getTechniqueCategories();
   const filters = ['Toutes', ...categories];
-
-  if (!filters.includes(state.techniqueFilter)) {
-    state.techniqueFilter = 'Toutes';
-  }
-
+  if (!filters.includes(state.techniqueFilter)) state.techniqueFilter = 'Toutes';
   container.innerHTML = filters.map((category) => `
-    <button
-      type="button"
-      class="technique-filter-btn ${state.techniqueFilter === category ? 'active' : ''}"
-      data-category="${category}"
-    >
-      ${category}
-    </button>
+    <button type="button" class="technique-filter-btn ${state.techniqueFilter === category ? 'active' : ''}" data-category="${category}">${category}</button>
   `).join('');
-
   container.querySelectorAll('.technique-filter-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.techniqueFilter = btn.dataset.category;
@@ -396,7 +253,6 @@ function normalizeSkills(skillsFromDb) {
   const incoming = Array.isArray(skillsFromDb) ? skillsFromDb : [];
   const byId = new Map(incoming.map((s) => [s.id, s]));
   const byName = new Map(incoming.map((s) => [s.name, s]));
-
   return DEFAULT_SKILLS.map((base) => {
     const source = byId.get(base.id) || byName.get(base.name);
     const val = Number.isFinite(source?.value) ? source.value : base.value;
@@ -406,36 +262,19 @@ function normalizeSkills(skillsFromDb) {
 
 function normalizeTechniques(techniquesFromDb) {
   const incoming = Array.isArray(techniquesFromDb) ? techniquesFromDb : [];
-
-  const normalizedIncoming = incoming
-    .map((t) => ({
-      name: legacyTechniqueName(t.name),
-      category: String(t.category || 'Autre').trim() || 'Autre',
-      mastered: !!t.mastered,
-      locked: !!t.locked,
-    }))
-    .filter((t) => t.name);
-
+  const normalizedIncoming = incoming.map((t) => ({
+    name: legacyTechniqueName(t.name),
+    category: String(t.category || 'Autre').trim() || 'Autre',
+    mastered: !!t.mastered,
+    locked: !!t.locked,
+  })).filter((t) => t.name);
   const incomingByKey = new Map(normalizedIncoming.map((t) => [techniqueKey(t), t]));
-
   const mergedDefaults = DEFAULT_TECHNIQUES.map((base) => {
     const existing = incomingByKey.get(techniqueKey(base));
-    return {
-      ...base,
-      mastered: existing ? !!existing.mastered : !!base.mastered,
-      locked: true,
-    };
+    return { ...base, mastered: existing ? !!existing.mastered : !!base.mastered, locked: true };
   });
-
   const defaultKeys = new Set(DEFAULT_TECHNIQUES.map((t) => techniqueKey(t)));
-
-  const customTechniques = normalizedIncoming
-    .filter((t) => !defaultKeys.has(techniqueKey(t)))
-    .map((t) => ({
-      ...t,
-      locked: !!t.locked,
-    }));
-
+  const customTechniques = normalizedIncoming.filter((t) => !defaultKeys.has(techniqueKey(t))).map((t) => ({ ...t, locked: !!t.locked }));
   return [...mergedDefaults, ...customTechniques];
 }
 
@@ -449,120 +288,39 @@ function resetStateToDefaults() {
 }
 
 function normalizePseudo(pseudo) {
-  return String(pseudo || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9._-]/g, '');
+  return String(pseudo || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9._-]/g, '');
 }
-
-function pseudoToEmail(pseudo) {
-  return `${normalizePseudo(pseudo)}@gong.app`;
-}
-
-function safePseudoFromEmail(email) {
-  return String(email || '').split('@')[0] || '';
-}
-
-function showError(el, msg) {
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove('hidden');
-}
-
-function hideError(el) {
-  if (!el) return;
-  el.textContent = '';
-  el.classList.add('hidden');
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2200);
-}
-
-function addHistory(type, desc) {
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  state.history.unshift({ type, desc, date: dateStr });
-  if (state.history.length > 200) state.history.pop();
-}
-
-function isLoggedIn() {
-  return !!state.user?.id;
-}
-
-function openModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('hidden');
-}
-
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('hidden');
-}
+function pseudoToEmail(pseudo) { return `${normalizePseudo(pseudo)}@gong.app`; }
+function safePseudoFromEmail(email) { return String(email || '').split('@')[0] || ''; }
+function showError(el, msg) { if (!el) return; el.textContent = msg; el.classList.remove('hidden'); }
+function hideError(el) { if (!el) return; el.textContent = ''; el.classList.add('hidden'); }
+function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+function addHistory(type, desc) { const now = new Date(); const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); state.history.unshift({ type, desc, date: dateStr }); if (state.history.length > 200) state.history.pop(); }
+function isLoggedIn() { return !!state.user?.id; }
+function openModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+function closeModal(id) { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }
 
 function updateAuthUI() {
   if (state.user) {
-    if (authBtn) {
-      authBtn.textContent = 'Déconnexion';
-      authBtn.classList.add('logged-in');
-    }
-    if (userDisplay) {
-      userDisplay.textContent = state.user.pseudo;
-      userDisplay.classList.remove('hidden');
-    }
+    if (authBtn) { authBtn.textContent = 'Déconnexion'; authBtn.classList.add('logged-in'); }
+    if (userDisplay) { userDisplay.textContent = state.user.pseudo; userDisplay.classList.remove('hidden'); }
   } else {
-    if (authBtn) {
-      authBtn.textContent = 'Se connecter';
-      authBtn.classList.remove('logged-in');
-    }
-    if (userDisplay) {
-      userDisplay.textContent = '';
-      userDisplay.classList.add('hidden');
-    }
+    if (authBtn) { authBtn.textContent = 'Se connecter'; authBtn.classList.remove('logged-in'); }
+    if (userDisplay) { userDisplay.textContent = ''; userDisplay.classList.add('hidden'); }
   }
 }
 
 function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.tab === name);
-  });
-
-  document.querySelectorAll('.tab-section').forEach((s) => {
-    s.classList.toggle('active', s.id === `tab-${name}`);
-  });
-
+  document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-section').forEach((s) => s.classList.toggle('active', s.id === `tab-${name}`));
   if (name === 'profil') drawRadar('radar-canvas', state.skills);
-  if (name === 'techniques') {
-    renderTechniqueFilters();
-    renderTechniques();
-  }
+  if (name === 'techniques') { renderTechniqueFilters(); renderTechniques(); }
   if (name === 'historique') renderHistory();
   if (name === 'communaute') renderCommunity();
 }
 
-document.querySelectorAll('.tab-btn').forEach((btn) => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
-
-document.querySelectorAll('.modal-backdrop').forEach((b) => {
-  b.addEventListener('click', () => {
-    document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden'));
-  });
-});
-
+document.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => { document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); }));
 document.querySelectorAll('.modal-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.modal-tab').forEach((t) => t.classList.remove('active'));
@@ -573,11 +331,9 @@ document.querySelectorAll('.modal-tab').forEach((tab) => {
   });
 });
 
-// ── COLORS ───────────────────────────────────────────────────────────────────
 function valueColor(v) {
   const t = v / 10;
   if (t === 0) return { r: 58, g: 58, b: 58 };
-
   const stops = [
     { t: 0, r: 58, g: 58, b: 58 },
     { t: 0.3, r: 80, g: 60, b: 5 },
@@ -585,35 +341,19 @@ function valueColor(v) {
     { t: 0.8, r: 220, g: 160, b: 0 },
     { t: 1, r: 255, g: 208, b: 0 },
   ];
-
   let i = 0;
   while (i < stops.length - 1 && stops[i + 1].t <= t) i++;
   const a = stops[i];
   const b = stops[Math.min(i + 1, stops.length - 1)];
   const f = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
-
-  return {
-    r: Math.round(a.r + (b.r - a.r) * f),
-    g: Math.round(a.g + (b.g - a.g) * f),
-    b: Math.round(a.b + (b.b - a.b) * f),
-  };
+  return { r: Math.round(a.r + (b.r - a.r) * f), g: Math.round(a.g + (b.g - a.g) * f), b: Math.round(a.b + (b.b - a.b) * f) };
 }
+function colorStr(v) { const { r, g, b } = valueColor(v); return `rgb(${r},${g},${b})`; }
+function colorHex(v) { const { r, g, b } = valueColor(v); return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`; }
 
-function colorStr(v) {
-  const { r, g, b } = valueColor(v);
-  return `rgb(${r},${g},${b})`;
-}
-
-function colorHex(v) {
-  const { r, g, b } = valueColor(v);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-// ── RADAR ────────────────────────────────────────────────────────────────────
 function drawRadar(canvasId, skills, secondarySkills = null) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
-
   const ctx = canvas.getContext('2d');
   const W = canvas.width;
   const H = canvas.height;
@@ -622,9 +362,7 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
   const R = Math.min(W, H) * 0.31;
   const N = skills.length;
   const levels = 5;
-
   ctx.clearRect(0, 0, W, H);
-
   for (let l = 1; l <= levels; l++) {
     const r = (R / levels) * l;
     ctx.beginPath();
@@ -639,7 +377,6 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.lineWidth = l === levels ? 1.5 : 1;
     ctx.stroke();
   }
-
   for (let i = 0; i < N; i++) {
     const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
     ctx.beginPath();
@@ -649,7 +386,6 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.lineWidth = 1;
     ctx.stroke();
   }
-
   function drawPolygon(skillsArr, fillColor, strokeColor, alpha = 1) {
     ctx.beginPath();
     for (let i = 0; i < N; i++) {
@@ -669,22 +405,14 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.lineWidth = 2;
     ctx.stroke();
   }
-
   const avg = skills.reduce((s, k) => s + k.value, 0) / N;
-
-  drawPolygon(
-    skills,
-    `rgba(${Object.values(valueColor(avg)).join(',')},0.13)`,
-    colorStr(avg * 0.9 + 1)
-  );
-
+  drawPolygon(skills, `rgba(${Object.values(valueColor(avg)).join(',')},0.13)`, colorStr(avg * 0.9 + 1));
   for (let i = 0; i < N; i++) {
     const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
     const val = Math.max(0, Math.min(10, skills[i].value));
     const r = (val / 10) * R;
     const x = cx + r * Math.cos(angle);
     const y = cy + r * Math.sin(angle);
-
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
     ctx.fillStyle = colorStr(val);
@@ -693,187 +421,78 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.lineWidth = 1;
     ctx.stroke();
   }
-
-  if (secondarySkills) {
-    drawPolygon(
-      secondarySkills,
-      'rgba(120,180,255,0.08)',
-      'rgba(120,180,255,0.6)',
-      1
-    );
-  }
-
+  if (secondarySkills) drawPolygon(secondarySkills, 'rgba(120,180,255,0.08)', 'rgba(120,180,255,0.6)', 1);
   for (let i = 0; i < N; i++) {
     const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
-
     let labelR = R + 34;
     let offsetX = 0;
-
-    if (skills[i].name === 'Structure') {
-      labelR = R + 26;
-      offsetX = -18;
-    }
-
+    if (skills[i].name === 'Structure') { labelR = R + 26; offsetX = -18; }
     const x = cx + labelR * Math.cos(angle) + offsetX;
     const y = cy + labelR * Math.sin(angle);
-
     ctx.font = '600 11px Barlow, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = colorStr(skills[i].value);
-
-    const label = skills[i].name.toUpperCase();
-    ctx.fillText(label, x, y);
+    ctx.fillText(skills[i].name.toUpperCase(), x, y);
   }
-
   ctx.beginPath();
   ctx.arc(cx, cy, 3, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
   ctx.fill();
 }
 
-// ── REMOTE DB ────────────────────────────────────────────────────────────────
 async function ensureRemoteRow() {
   if (!isLoggedIn() || !supabaseClient) return;
-
   const isoNow = new Date().toISOString();
   const normalizedTechniques = normalizeTechniques(state.techniques);
-
   state.techniques = normalizedTechniques;
-
-  const privatePayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    techniques: normalizedTechniques,
-    history: state.history,
-    observations: state.observations,
-    updated_at: isoNow,
-  };
-
-  const publicPayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    techniques: normalizedTechniques,
-    updated_at: isoNow,
-  };
-
-  const { error: privateError } = await supabaseClient
-    .from('gong_users')
-    .upsert(privatePayload, { onConflict: 'id' });
-
-  if (privateError) {
-    console.warn('[Gōng] ensureRemoteRow private error', privateError);
-  }
-
-  const { error: publicError } = await supabaseClient
-    .from('gong_public_profiles')
-    .upsert(publicPayload, { onConflict: 'id' });
-
-  if (publicError) {
-    console.warn('[Gōng] ensureRemoteRow public error', publicError);
-  }
+  const privatePayload = { id: state.user.id, pseudo: state.user.pseudo, skills: state.skills, techniques: normalizedTechniques, history: state.history, observations: state.observations, updated_at: isoNow };
+  const publicPayload = { id: state.user.id, pseudo: state.user.pseudo, skills: state.skills, techniques: normalizedTechniques, updated_at: isoNow };
+  const { error: privateError } = await supabaseClient.from('gong_users').upsert(privatePayload, { onConflict: 'id' });
+  if (privateError) console.warn('[Gōng] ensureRemoteRow private error', privateError);
+  const { error: publicError } = await supabaseClient.from('gong_public_profiles').upsert(publicPayload, { onConflict: 'id' });
+  if (publicError) console.warn('[Gōng] ensureRemoteRow public error', publicError);
 }
 
 async function loadRemoteUserState() {
   if (!isLoggedIn() || !supabaseClient) return;
-
-  const { data, error } = await supabaseClient
-    .from('gong_users')
-    .select('id, pseudo, skills, techniques, history, observations')
-    .eq('id', state.user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.warn('[Gōng] Supabase load error', error);
-    return;
-  }
-
-  if (!data) {
-    await ensureRemoteRow();
-    return;
-  }
-
+  const { data, error } = await supabaseClient.from('gong_users').select('id, pseudo, skills, techniques, history, observations').eq('id', state.user.id).maybeSingle();
+  if (error) { console.warn('[Gōng] Supabase load error', error); return; }
+  if (!data) { await ensureRemoteRow(); return; }
   state.user.pseudo = data.pseudo || state.user.pseudo;
   state.skills = normalizeSkills(data.skills);
   state.techniques = normalizeTechniques(data.techniques);
   state.history = Array.isArray(data.history) ? data.history : [];
   state.observations = typeof data.observations === 'string' ? data.observations : '';
   state.techniqueFilter = 'Toutes';
-
   if (obsEl) obsEl.value = state.observations;
-
-  renderSkills();
-  renderTechniqueFilters();
-  renderTechniques();
-  renderHistory();
-  drawRadar('radar-canvas', state.skills);
+  renderSkills(); renderTechniqueFilters(); renderTechniques(); renderHistory(); drawRadar('radar-canvas', state.skills);
 }
 
 async function syncRemoteUserState() {
   if (!isLoggedIn() || !supabaseClient) return;
-
   const isoNow = new Date().toISOString();
   const normalizedTechniques = normalizeTechniques(state.techniques);
-
   state.techniques = normalizedTechniques;
-
-  const privatePayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    techniques: normalizedTechniques,
-    history: state.history,
-    observations: state.observations,
-    updated_at: isoNow,
-  };
-
-  const publicPayload = {
-    id: state.user.id,
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    techniques: normalizedTechniques,
-    updated_at: isoNow,
-  };
-
-  const { error: privateError } = await supabaseClient
-    .from('gong_users')
-    .upsert(privatePayload, { onConflict: 'id' });
-
-  if (privateError) {
-    console.warn('[Gōng] Supabase private sync error', privateError);
-  }
-
-  const { error: publicError } = await supabaseClient
-    .from('gong_public_profiles')
-    .upsert(publicPayload, { onConflict: 'id' });
-
-  if (publicError) {
-    console.warn('[Gōng] Supabase public sync error', publicError);
-  }
-
-  if (document.getElementById('tab-communaute')?.classList.contains('active')) {
-    await renderCommunity();
-  }
+  const privatePayload = { id: state.user.id, pseudo: state.user.pseudo, skills: state.skills, techniques: normalizedTechniques, history: state.history, observations: state.observations, updated_at: isoNow };
+  const publicPayload = { id: state.user.id, pseudo: state.user.pseudo, skills: state.skills, techniques: normalizedTechniques, updated_at: isoNow };
+  const { error: privateError } = await supabaseClient.from('gong_users').upsert(privatePayload, { onConflict: 'id' });
+  if (privateError) console.warn('[Gōng] Supabase private sync error', privateError);
+  const { error: publicError } = await supabaseClient.from('gong_public_profiles').upsert(publicPayload, { onConflict: 'id' });
+  if (publicError) console.warn('[Gōng] Supabase public sync error', publicError);
+  if (document.getElementById('tab-communaute')?.classList.contains('active')) await renderCommunity();
 }
 
 function scheduleRemoteSync() {
   if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
-
-  remoteSyncTimer = setTimeout(() => {
-    syncRemoteUserState();
-  }, 400);
+  remoteSyncTimer = setTimeout(() => { syncRemoteUserState(); }, 400);
 }
 
-// ── SKILLS UI ────────────────────────────────────────────────────────────────
 function renderSkills() {
   const container = document.getElementById('skills-list');
   if (!container) return;
-
   container.innerHTML = '';
-
   state.skills.forEach((skill) => {
     const div = document.createElement('div');
     div.className = 'skill-item';
@@ -883,12 +502,10 @@ function renderSkills() {
         <span class="skill-value" id="val-${skill.id}" style="color:${colorStr(skill.value)}">${skill.value}</span>
       </div>
       <div class="skill-slider-wrap">
-        <input type="range" min="0" max="10" step="1" value="${skill.value}"
-          id="slider-${skill.id}" data-id="${skill.id}" />
+        <input type="range" min="0" max="10" step="1" value="${skill.value}" id="slider-${skill.id}" data-id="${skill.id}" />
       </div>
     `;
     container.appendChild(div);
-
     const slider = div.querySelector(`#slider-${skill.id}`);
     updateSliderStyle(slider, skill.value);
     slider.addEventListener('input', onSliderInput);
@@ -900,14 +517,10 @@ function updateSliderStyle(slider, v) {
   const pct = (v / 10) * 100;
   const col = colorHex(v);
   const glow = v > 0 ? `rgba(${Object.values(valueColor(v)).join(',')},0.4)` : 'transparent';
-
   slider.style.setProperty('--thumb-color', col);
   slider.style.setProperty('--thumb-border', col);
   slider.style.setProperty('--thumb-glow', glow);
-  slider.style.setProperty(
-    '--track-bg',
-    `linear-gradient(to right, ${col} 0%, ${col} ${pct}%, var(--bg-4) ${pct}%, var(--bg-4) 100%)`
-  );
+  slider.style.setProperty('--track-bg', `linear-gradient(to right, ${col} 0%, ${col} ${pct}%, var(--bg-4) ${pct}%, var(--bg-4) 100%)`);
 }
 
 function onSliderInput(e) {
@@ -915,15 +528,9 @@ function onSliderInput(e) {
   const v = parseInt(e.target.value, 10);
   const skill = state.skills.find((s) => s.id === id);
   if (!skill) return;
-
   skill.value = v;
-
   const valEl = document.getElementById(`val-${id}`);
-  if (valEl) {
-    valEl.textContent = v;
-    valEl.style.color = colorStr(v);
-  }
-
+  if (valEl) { valEl.textContent = v; valEl.style.color = colorStr(v); }
   updateSliderStyle(e.target, v);
   drawRadar('radar-canvas', state.skills);
 }
@@ -933,33 +540,24 @@ function onSliderChange(e) {
   const v = parseInt(e.target.value, 10);
   const skill = state.skills.find((s) => s.id === id);
   if (!skill) return;
-
   addHistory('skill', `${skill.name} → ${v}/10`);
   renderHistory();
   scheduleRemoteSync();
 }
 
-// ── TECHNIQUES UI ────────────────────────────────────────────────────────────
 function renderTechniques() {
   const container = document.getElementById('techniques-list');
   if (!container) return;
-
   container.innerHTML = '';
-
-  const filteredTechniques = state.techniques.filter((tech) => {
-    return state.techniqueFilter === 'Toutes' || tech.category === state.techniqueFilter;
-  });
-
+  const filteredTechniques = state.techniques.filter((tech) => state.techniqueFilter === 'Toutes' || tech.category === state.techniqueFilter);
   if (!filteredTechniques.length) {
     container.innerHTML = '<p style="color:var(--text-3);font-size:.88rem;text-align:center;padding:30px 0">Aucune technique dans cette catégorie.</p>';
     return;
   }
-
   filteredTechniques.forEach((tech) => {
     const idx = state.techniques.findIndex((t) => techniqueKey(t) === techniqueKey(tech));
     const div = document.createElement('div');
     div.className = `technique-item ${tech.mastered ? 'mastered' : ''} ${tech.locked ? 'locked' : ''}`;
-
     div.innerHTML = `
       <div class="technique-check" data-idx="${idx}"></div>
       <div class="technique-info">
@@ -968,27 +566,15 @@ function renderTechniques() {
       </div>
       ${tech.locked ? '' : `<button class="technique-delete" data-idx="${idx}" title="Supprimer" type="button">✕</button>`}
     `;
-
-    div.addEventListener('click', (e) => {
-      if (e.target.closest('.technique-delete')) return;
-      toggleTechnique(idx);
-    });
-
+    div.addEventListener('click', (e) => { if (e.target.closest('.technique-delete')) return; toggleTechnique(idx); });
     const deleteBtn = div.querySelector('.technique-delete');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteTechnique(idx);
-      });
-    }
-
+    if (deleteBtn) deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTechnique(idx); });
     container.appendChild(div);
   });
 }
 
 function toggleTechnique(idx) {
   if (!state.techniques[idx]) return;
-
   state.techniques[idx].mastered = !state.techniques[idx].mastered;
   const status = state.techniques[idx].mastered ? 'maîtrisée' : 'non maîtrisée';
   addHistory('tech', `${state.techniques[idx].name} marquée ${status}`);
@@ -998,19 +584,13 @@ function toggleTechnique(idx) {
 }
 
 function deleteTechnique(idx) {
-  if (!state.techniques[idx]) return;
-  if (state.techniques[idx].locked) return;
-
+  if (!state.techniques[idx] || state.techniques[idx].locked) return;
   const name = state.techniques[idx].name;
   state.techniques.splice(idx, 1);
-
   if (state.techniqueFilter !== 'Toutes') {
     const categories = getTechniqueCategories();
-    if (!categories.includes(state.techniqueFilter)) {
-      state.techniqueFilter = 'Toutes';
-    }
+    if (!categories.includes(state.techniqueFilter)) state.techniqueFilter = 'Toutes';
   }
-
   addHistory('tech', `Technique supprimée : ${name}`);
   renderTechniqueFilters();
   renderTechniques();
@@ -1018,16 +598,13 @@ function deleteTechnique(idx) {
   scheduleRemoteSync();
 }
 
-// ── HISTORY ──────────────────────────────────────────────────────────────────
 function renderHistory() {
   const container = document.getElementById('history-list');
   if (!container) return;
-
   if (!state.history.length) {
     container.innerHTML = '<p class="history-empty">Aucune modification enregistrée.</p>';
     return;
   }
-
   container.innerHTML = state.history.map((h) => `
     <div class="history-item type-${h.type}">
       <span class="history-date">${h.date}</span>
@@ -1036,14 +613,11 @@ function renderHistory() {
   `).join('');
 }
 
-// ── COMMUNITY ────────────────────────────────────────────────────────────────
 function renderFormsComparison(otherPseudo, otherTechniques) {
   if (!compareFormsEl) return;
-
   const myForms = getFormsSummary(state.techniques).forms;
   const otherForms = getFormsSummary(otherTechniques).forms;
   const otherMap = new Map(otherForms.map((form) => [form.name, !!form.mastered]));
-
   compareFormsEl.innerHTML = `
     <div class="compare-forms-header">
       <div>Forme</div>
@@ -1053,7 +627,6 @@ function renderFormsComparison(otherPseudo, otherTechniques) {
     ${myForms.map((form) => {
       const mine = !!form.mastered;
       const theirs = !!otherMap.get(form.name);
-
       return `
         <div class="compare-form-row">
           <div class="compare-form-name">${form.name}</div>
@@ -1068,40 +641,26 @@ function renderFormsComparison(otherPseudo, otherTechniques) {
 async function renderCommunity() {
   const container = document.getElementById('community-list');
   if (!container) return;
-
   if (!supabaseClient) {
     container.innerHTML = '<p class="community-empty">Communauté indisponible.</p>';
     return;
   }
-
   container.innerHTML = '<p class="community-empty">Chargement…</p>';
-
-  const { data, error } = await supabaseClient
-    .from('gong_public_profiles')
-    .select('id, pseudo, skills, techniques, updated_at')
-    .order('updated_at', { ascending: false });
-
+  const { data, error } = await supabaseClient.from('gong_public_profiles').select('id, pseudo, skills, techniques, updated_at').order('updated_at', { ascending: false });
   if (error) {
     console.error('[Gōng] Community load error:', error);
     container.innerHTML = '<p class="community-empty">Erreur de chargement.</p>';
     return;
   }
-
   const users = (data || []).filter((u) => u.id !== state.user?.id);
-
   if (!users.length) {
     container.innerHTML = '<p class="community-empty">Aucun utilisateur.</p>';
     return;
   }
-
   container.innerHTML = users.map((user) => {
     const skills = normalizeSkills(user.skills);
-    const avg = skills.length
-      ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1)
-      : '0';
-
+    const avg = skills.length ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1) : '0';
     const formsSummary = getFormsSummary(user.techniques);
-
     return `
       <div class="community-item">
         <div class="community-item-main">
@@ -1115,17 +674,11 @@ async function renderCommunity() {
       </div>
     `;
   }).join('');
-
   container.querySelectorAll('.btn-compare').forEach((btn) => {
     btn.addEventListener('click', () => {
       const user = users.find((u) => u.id === btn.dataset.id);
       if (!user) return;
-
-      showComparison({
-        pseudo: user.pseudo,
-        skills: normalizeSkills(user.skills),
-        techniques: normalizeTechniques(user.techniques),
-      });
+      showComparison({ pseudo: user.pseudo, skills: normalizeSkills(user.skills), techniques: normalizeTechniques(user.techniques) });
     });
   });
 }
@@ -1134,65 +687,25 @@ function showComparison(other) {
   const title = document.getElementById('compare-title');
   const myFormsSummary = getFormsSummary(state.techniques);
   const otherFormsSummary = getFormsSummary(other.techniques);
-
-  if (title) {
-    title.textContent = `Vous vs ${other.pseudo} — Formes ${myFormsSummary.display} / ${otherFormsSummary.display}`;
-  }
-
+  if (title) title.textContent = `Vous vs ${other.pseudo} — Formes ${myFormsSummary.display} / ${otherFormsSummary.display}`;
   if (compareRadarContainer) compareRadarContainer.classList.remove('hidden');
   drawRadar('compare-canvas', state.skills, other.skills);
   renderFormsComparison(other.pseudo, other.techniques);
 }
 
-// ── AUTH ─────────────────────────────────────────────────────────────────────
 async function handleRegister() {
   hideError(regErrorEl);
-
-  if (!supabaseClient) {
-    showError(regErrorEl, 'Supabase non configuré.');
-    return;
-  }
-
+  if (!supabaseClient) { showError(regErrorEl, 'Supabase non configuré.'); return; }
   const pseudo = regPseudoEl?.value.trim() || '';
   const password = regPasswordEl?.value || '';
-
-  if (!pseudo || !password) {
-    showError(regErrorEl, 'Pseudo et mot de passe requis.');
-    return;
-  }
-
-  if (normalizePseudo(pseudo).length < 3) {
-    showError(regErrorEl, 'Pseudo trop court.');
-    return;
-  }
-
-  if (password.length < 4) {
-    showError(regErrorEl, 'Mot de passe trop court (4 caractères min.).');
-    return;
-  }
-
+  if (!pseudo || !password) { showError(regErrorEl, 'Pseudo et mot de passe requis.'); return; }
+  if (normalizePseudo(pseudo).length < 3) { showError(regErrorEl, 'Pseudo trop court.'); return; }
+  if (password.length < 4) { showError(regErrorEl, 'Mot de passe trop court (4 caractères min.).'); return; }
   const email = pseudoToEmail(pseudo);
-
-  const { data, error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { pseudo },
-    },
-  });
-
-  if (error) {
-    showError(regErrorEl, error.message || 'Inscription impossible.');
-    return;
-  }
-
+  const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { pseudo } } });
+  if (error) { showError(regErrorEl, error.message || 'Inscription impossible.'); return; }
   const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (signIn.error) {
-    showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
-    return;
-  }
-
+  if (signIn.error) { showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.'); return; }
   console.log('REGISTER RESULT', data);
   showToast(`Compte créé. Bienvenue, ${pseudo} !`);
   closeModal('auth-modal');
@@ -1200,39 +713,19 @@ async function handleRegister() {
 
 async function handleLogin() {
   hideError(loginErrorEl);
-
-  if (!supabaseClient) {
-    showError(loginErrorEl, 'Supabase non configuré.');
-    return;
-  }
-
+  if (!supabaseClient) { showError(loginErrorEl, 'Supabase non configuré.'); return; }
   const pseudo = loginPseudoEl?.value.trim() || '';
   const password = loginPasswordEl?.value || '';
-
-  if (!pseudo || !password) {
-    showError(loginErrorEl, 'Pseudo et mot de passe requis.');
-    return;
-  }
-
+  if (!pseudo || !password) { showError(loginErrorEl, 'Pseudo et mot de passe requis.'); return; }
   const email = pseudoToEmail(pseudo);
-
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
-    return;
-  }
-
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.'); return; }
   closeModal('auth-modal');
   showToast(`Bienvenue, ${pseudo} !`);
 }
 
 async function handleLogout() {
   if (!supabaseClient) return;
-
   await supabaseClient.auth.signOut();
   state.user = null;
   resetStateToDefaults();
@@ -1258,115 +751,56 @@ async function applySession(session) {
     drawRadar('radar-canvas', state.skills);
     return;
   }
-
   const user = session.user;
-
-  state.user = {
-    id: user.id,
-    pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email),
-    email: user.email,
-  };
-
+  state.user = { id: user.id, pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email), email: user.email };
   updateAuthUI();
-
   isInitialLoading = true;
   await loadRemoteUserState();
   isInitialLoading = false;
+  await syncRemoteUserState();
 }
 
-// ── PWA INSTALL ──────────────────────────────────────────────────────────────
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
   installBtn?.classList.remove('hidden');
 });
+window.addEventListener('appinstalled', () => { deferredInstallPrompt = null; installBtn?.classList.add('hidden'); });
+async function handleInstallApp() { if (!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; installBtn?.classList.add('hidden'); }
 
-window.addEventListener('appinstalled', () => {
-  deferredInstallPrompt = null;
-  installBtn?.classList.add('hidden');
-});
-
-async function handleInstallApp() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  await deferredInstallPrompt.userChoice;
-  deferredInstallPrompt = null;
-  installBtn?.classList.add('hidden');
-}
-
-// ── INIT ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   injectDynamicStyles();
   ensureTechniqueFiltersContainer();
   ensureFormesOption();
-
   renderSkills();
   renderTechniqueFilters();
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
-
   if (obsEl) obsEl.value = state.observations || '';
-
   saveObsBtn?.addEventListener('click', () => {
     state.observations = obsEl?.value || '';
     addHistory('obs', 'Observations mises à jour');
     renderHistory();
     scheduleRemoteSync();
-
     saveObsBtn.textContent = '✓ Enregistré';
     saveObsBtn.classList.add('saved');
-
-    setTimeout(() => {
-      saveObsBtn.textContent = 'Enregistrer';
-      saveObsBtn.classList.remove('saved');
-    }, 2000);
-
+    setTimeout(() => { saveObsBtn.textContent = 'Enregistrer'; saveObsBtn.classList.remove('saved'); }, 2000);
     showToast('Observations enregistrées');
   });
-
-  authBtn?.addEventListener('click', () => {
-    if (state.user) {
-      handleLogout();
-    } else {
-      openModal('auth-modal');
-    }
-  });
-
+  authBtn?.addEventListener('click', () => { if (state.user) handleLogout(); else openModal('auth-modal'); });
   modalCloseBtn?.addEventListener('click', () => closeModal('auth-modal'));
   techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
-
-  if (closeCompareBtn) {
-    closeCompareBtn.addEventListener('click', () => {
-      compareRadarContainer?.classList.add('hidden');
-      if (compareFormsEl) compareFormsEl.innerHTML = '';
-    });
-  }
-
+  if (closeCompareBtn) closeCompareBtn.addEventListener('click', () => { compareRadarContainer?.classList.add('hidden'); if (compareFormsEl) compareFormsEl.innerHTML = ''; });
   loginBtnEl?.addEventListener('click', handleLogin);
   registerBtnEl?.addEventListener('click', handleRegister);
   installBtn?.addEventListener('click', handleInstallApp);
-
-  addTechniqueBtn?.addEventListener('click', () => {
-    openModal('technique-modal');
-  });
-
+  addTechniqueBtn?.addEventListener('click', () => openModal('technique-modal'));
   addTechniqueConfirm?.addEventListener('click', () => {
     const name = legacyTechniqueName(newTechniqueName?.value.trim() || '');
     const cat = newTechniqueCategory?.value || 'Autre';
-
-    if (!name) {
-      showToast('Entrez un nom de technique');
-      return;
-    }
-
-    state.techniques.push({
-      name,
-      category: cat,
-      mastered: false,
-      locked: false,
-    });
-
+    if (!name) { showToast('Entrez un nom de technique'); return; }
+    state.techniques.push({ name, category: cat, mastered: false, locked: false });
     state.techniqueFilter = cat;
     addHistory('tech', `Nouvelle technique ajoutée : ${name}`);
     renderTechniqueFilters();
@@ -1374,27 +808,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderHistory();
     scheduleRemoteSync();
     closeModal('technique-modal');
-
     if (newTechniqueName) newTechniqueName.value = '';
-
     showToast(`"${name}" ajoutée`);
   });
-
   if (supabaseClient) {
     const { data: { session } } = await supabaseClient.auth.getSession();
     await applySession(session);
-
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-      await applySession(session);
-    });
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => { await applySession(session); });
   }
 });
 
-// ── SERVICE WORKER ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Gong/sw.js')
-      .then((r) => console.log('[Gōng] SW enregistré', r.scope))
-      .catch((e) => console.warn('[Gōng] SW erreur', e));
+    navigator.serviceWorker.register('/Gong/sw.js').then((r) => console.log('[Gōng] SW enregistré', r.scope)).catch((e) => console.warn('[Gōng] SW erreur', e));
   });
 }
