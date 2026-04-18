@@ -56,8 +56,8 @@ const DEFAULT_TECHNIQUES = [
   { name: 'Tarn Sao', category: 'Wing Chun', mastered: false, locked: true },
   { name: 'Larp Sao', category: 'Wing Chun', mastered: false, locked: true },
   { name: 'Larn Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Quan Sao', category: 'Wing Chun', mastered: false, locked: true },
-  { name: 'Qan Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Kuan Sao', category: 'Wing Chun', mastered: false, locked: true },
+  { name: 'Kan Sao', category: 'Wing Chun', mastered: false, locked: true },
 
   { name: 'Siu Lim Tao', category: 'Formes', mastered: false, locked: true },
   { name: 'Chum Kiu', category: 'Formes', mastered: false, locked: true },
@@ -67,6 +67,9 @@ const DEFAULT_TECHNIQUES = [
   { name: 'Arme - Couteaux Papillons', category: 'Formes', mastered: false, locked: true },
   { name: 'Arme - Bâton Long', category: 'Formes', mastered: false, locked: true },
 ];
+
+const DEFAULT_FORMS = DEFAULT_TECHNIQUES.filter((t) => t.category === 'Formes');
+const DEFAULT_FORMS_TOTAL = DEFAULT_FORMS.length;
 
 function cloneSkills() {
   return DEFAULT_SKILLS.map((s) => ({ ...s }));
@@ -78,6 +81,51 @@ function cloneTechniques() {
 
 function techniqueKey(tech) {
   return `${String(tech.category || '').trim()}::${String(tech.name || '').trim()}`;
+}
+
+function legacyTechniqueName(name) {
+  const normalized = String(name || '').trim();
+  if (normalized === 'Quan Sao') return 'Kuan Sao';
+  if (normalized === 'Qan Sao') return 'Kan Sao';
+  return normalized;
+}
+
+function getCanonicalTechnique(tech) {
+  return {
+    ...tech,
+    name: legacyTechniqueName(tech?.name),
+    category: String(tech?.category || 'Autre').trim() || 'Autre',
+  };
+}
+
+function getFormsTechniques(techniques) {
+  const canonical = Array.isArray(techniques)
+    ? techniques.map((t) => getCanonicalTechnique(t))
+    : [];
+
+  const incomingByName = new Map(
+    canonical
+      .filter((t) => t.category === 'Formes')
+      .map((t) => [t.name, !!t.mastered])
+  );
+
+  return DEFAULT_FORMS.map((form) => ({
+    name: form.name,
+    category: 'Formes',
+    mastered: incomingByName.get(form.name) || false,
+  }));
+}
+
+function getFormsSummary(techniques) {
+  const forms = getFormsTechniques(techniques);
+  const validated = forms.filter((t) => t.mastered).length;
+
+  return {
+    total: DEFAULT_FORMS_TOTAL,
+    validated,
+    display: `${validated}/${DEFAULT_FORMS_TOTAL}`,
+    forms,
+  };
 }
 
 // ── STATE ────────────────────────────────────────────────────────────────────
@@ -120,6 +168,7 @@ const newTechniqueCategory = document.getElementById('new-technique-category');
 
 const compareRadarContainer = document.getElementById('compare-radar-container');
 const closeCompareBtn = document.getElementById('close-compare');
+const compareFormsEl = document.getElementById('compare-forms');
 
 const installBtn = document.getElementById('install-btn');
 
@@ -163,6 +212,106 @@ function injectDynamicStyles() {
 
     .technique-item.locked .technique-delete {
       display: none !important;
+    }
+
+    .compare-forms {
+      margin-top: 22px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .compare-forms-header,
+    .compare-form-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) 110px 110px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .compare-forms-header {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .compare-form-row {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    .compare-form-name {
+      color: #f4f4f4;
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+
+    .compare-form-status {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 36px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding: 0 12px;
+      text-align: center;
+    }
+
+    .compare-form-status.ok {
+      background: rgba(255, 208, 0, 0.14);
+      border: 1px solid rgba(255, 208, 0, 0.25);
+      color: #ffd000;
+    }
+
+    .compare-form-status.no {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.65);
+    }
+
+    .community-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .community-item-main {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .community-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .forms-count {
+      font-weight: 700;
+      color: #ffd000;
+    }
+
+    @media (max-width: 640px) {
+      .compare-forms-header,
+      .compare-form-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .compare-forms-header {
+        display: none;
+      }
+
+      .compare-form-row {
+        gap: 8px;
+      }
     }
   `;
   document.head.appendChild(style);
@@ -260,7 +409,7 @@ function normalizeTechniques(techniquesFromDb) {
 
   const normalizedIncoming = incoming
     .map((t) => ({
-      name: String(t.name || '').trim(),
+      name: legacyTechniqueName(t.name),
       category: String(t.category || 'Autre').trim() || 'Autre',
       mastered: !!t.mastered,
       locked: !!t.locked,
@@ -588,24 +737,27 @@ async function ensureRemoteRow() {
   if (!isLoggedIn() || !supabaseClient) return;
 
   const isoNow = new Date().toISOString();
+  const normalizedTechniques = normalizeTechniques(state.techniques);
+
+  state.techniques = normalizedTechniques;
 
   const privatePayload = {
     id: state.user.id,
     pseudo: state.user.pseudo,
     skills: state.skills,
-    techniques: state.techniques,
+    techniques: normalizedTechniques,
     history: state.history,
     observations: state.observations,
     updated_at: isoNow,
   };
 
   const publicPayload = {
-     id: state.user.id,
-     pseudo: state.user.pseudo,
-     skills: state.skills,
-     techniques: state.techniques,
-     updated_at: isoNow,
-   };
+    id: state.user.id,
+    pseudo: state.user.pseudo,
+    skills: state.skills,
+    techniques: normalizedTechniques,
+    updated_at: isoNow,
+  };
 
   const { error: privateError } = await supabaseClient
     .from('gong_users')
@@ -663,24 +815,27 @@ async function syncRemoteUserState() {
   if (!isLoggedIn() || !supabaseClient) return;
 
   const isoNow = new Date().toISOString();
+  const normalizedTechniques = normalizeTechniques(state.techniques);
+
+  state.techniques = normalizedTechniques;
 
   const privatePayload = {
     id: state.user.id,
     pseudo: state.user.pseudo,
     skills: state.skills,
-    techniques: state.techniques,
+    techniques: normalizedTechniques,
     history: state.history,
     observations: state.observations,
     updated_at: isoNow,
   };
 
   const publicPayload = {
-     id: state.user.id,
-     pseudo: state.user.pseudo,
-     skills: state.skills,
-     techniques: state.techniques,
-     updated_at: isoNow,
-   };
+    id: state.user.id,
+    pseudo: state.user.pseudo,
+    skills: state.skills,
+    techniques: normalizedTechniques,
+    updated_at: isoNow,
+  };
 
   const { error: privateError } = await supabaseClient
     .from('gong_users')
@@ -696,6 +851,10 @@ async function syncRemoteUserState() {
 
   if (publicError) {
     console.warn('[Gōng] Supabase public sync error', publicError);
+  }
+
+  if (document.getElementById('tab-communaute')?.classList.contains('active')) {
+    await renderCommunity();
   }
 }
 
@@ -878,6 +1037,34 @@ function renderHistory() {
 }
 
 // ── COMMUNITY ────────────────────────────────────────────────────────────────
+function renderFormsComparison(otherPseudo, otherTechniques) {
+  if (!compareFormsEl) return;
+
+  const myForms = getFormsSummary(state.techniques).forms;
+  const otherForms = getFormsSummary(otherTechniques).forms;
+  const otherMap = new Map(otherForms.map((form) => [form.name, !!form.mastered]));
+
+  compareFormsEl.innerHTML = `
+    <div class="compare-forms-header">
+      <div>Forme</div>
+      <div>Vous</div>
+      <div>${otherPseudo}</div>
+    </div>
+    ${myForms.map((form) => {
+      const mine = !!form.mastered;
+      const theirs = !!otherMap.get(form.name);
+
+      return `
+        <div class="compare-form-row">
+          <div class="compare-form-name">${form.name}</div>
+          <div class="compare-form-status ${mine ? 'ok' : 'no'}">${mine ? 'Validée' : 'Non validée'}</div>
+          <div class="compare-form-status ${theirs ? 'ok' : 'no'}">${theirs ? 'Validée' : 'Non validée'}</div>
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
 async function renderCommunity() {
   const container = document.getElementById('community-list');
   if (!container) return;
@@ -900,39 +1087,28 @@ async function renderCommunity() {
     return;
   }
 
-  const users = (data || []).filter(u => u.id !== state.user?.id);
+  const users = (data || []).filter((u) => u.id !== state.user?.id);
 
   if (!users.length) {
     container.innerHTML = '<p class="community-empty">Aucun utilisateur.</p>';
     return;
   }
 
-  container.innerHTML = users.map(user => {
+  container.innerHTML = users.map((user) => {
     const skills = normalizeSkills(user.skills);
     const avg = skills.length
       ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1)
       : '0';
 
-    const DEFAULT_FORMS_TOTAL = DEFAULT_TECHNIQUES.filter(t => t.category === 'Formes').length;
-
-   const forms = Array.isArray(user.techniques)
-     ? user.techniques.filter(t => t.category === 'Formes')
-     : [];
-
-   const formsValidated = forms.filter(t => t.mastered).length;
-
-   // si aucune donnée → on prend le total par défaut
-   const formsTotal = forms.length || DEFAULT_FORMS_TOTAL;
-
-   const formsDisplay = `${formsValidated}/${formsTotal}`;
+    const formsSummary = getFormsSummary(user.techniques);
 
     return `
       <div class="community-item">
-        <div>
+        <div class="community-item-main">
           <div class="community-pseudo">${user.pseudo}</div>
           <div class="community-stats">
             <span>Moyenne : ${avg}/10</span>
-            <span class="forms-count">Formes : ${formsDisplay}</span>
+            <span class="forms-count">Formes : ${formsSummary.display}</span>
           </div>
         </div>
         <button class="btn-compare" data-id="${user.id}">Comparer</button>
@@ -940,14 +1116,15 @@ async function renderCommunity() {
     `;
   }).join('');
 
-  container.querySelectorAll('.btn-compare').forEach(btn => {
+  container.querySelectorAll('.btn-compare').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const user = users.find(u => u.id === btn.dataset.id);
+      const user = users.find((u) => u.id === btn.dataset.id);
       if (!user) return;
 
       showComparison({
         pseudo: user.pseudo,
-        skills: normalizeSkills(user.skills)
+        skills: normalizeSkills(user.skills),
+        techniques: normalizeTechniques(user.techniques),
       });
     });
   });
@@ -955,9 +1132,16 @@ async function renderCommunity() {
 
 function showComparison(other) {
   const title = document.getElementById('compare-title');
-  if (title) title.textContent = `Vous vs ${other.pseudo}`;
+  const myFormsSummary = getFormsSummary(state.techniques);
+  const otherFormsSummary = getFormsSummary(other.techniques);
+
+  if (title) {
+    title.textContent = `Vous vs ${other.pseudo} — Formes ${myFormsSummary.display} / ${otherFormsSummary.display}`;
+  }
+
   if (compareRadarContainer) compareRadarContainer.classList.remove('hidden');
   drawRadar('compare-canvas', state.skills, other.skills);
+  renderFormsComparison(other.pseudo, other.techniques);
 }
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -1155,6 +1339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (closeCompareBtn) {
     closeCompareBtn.addEventListener('click', () => {
       compareRadarContainer?.classList.add('hidden');
+      if (compareFormsEl) compareFormsEl.innerHTML = '';
     });
   }
 
@@ -1167,7 +1352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   addTechniqueConfirm?.addEventListener('click', () => {
-    const name = newTechniqueName?.value.trim() || '';
+    const name = legacyTechniqueName(newTechniqueName?.value.trim() || '');
     const cat = newTechniqueCategory?.value || 'Autre';
 
     if (!name) {
