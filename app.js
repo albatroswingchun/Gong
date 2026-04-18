@@ -8,11 +8,11 @@
 const SUPABASE_URL = window.GONG_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.GONG_SUPABASE_ANON_KEY || '';
 
-if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'REMPLACE_ICI_PAR_TA_CLE_ANON_COMPLETE') {
+if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('[Gōng] Supabase non configuré.');
 }
 
-const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'REMPLACE_ICI_PAR_TA_CLE_ANON_COMPLETE')
+const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
@@ -80,9 +80,6 @@ let state = {
 let remoteSyncTimer = null;
 let isInitialLoading = false;
 
-const LOCAL_AUTH_ACCOUNTS_KEY = 'gong_local_accounts_v1';
-const LOCAL_STATE_PREFIX = 'gong_local_state_v1:';
-
 // ── DOM ──────────────────────────────────────────────────────────────────────
 const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
@@ -91,13 +88,11 @@ const userDisplay = document.getElementById('user-display');
 const modalCloseBtn = document.getElementById('modal-close-btn');
 
 const loginPseudoEl = document.getElementById('login-pseudo');
-const loginEmailEl = document.getElementById('login-email');
 const loginPasswordEl = document.getElementById('login-password');
 const loginBtnEl = document.getElementById('login-btn');
 const loginErrorEl = document.getElementById('login-error');
 
 const regPseudoEl = document.getElementById('reg-pseudo');
-const regEmailEl = document.getElementById('reg-email');
 const regPasswordEl = document.getElementById('reg-password');
 const registerBtnEl = document.getElementById('register-btn');
 const regErrorEl = document.getElementById('reg-error');
@@ -154,20 +149,22 @@ function normalizePseudo(pseudo) {
     .replace(/[^a-z0-9._-]/g, '');
 }
 
+function pseudoToEmail(pseudo) {
+  return `${normalizePseudo(pseudo)}@gong.app`;
+}
+
 function safePseudoFromEmail(email) {
   return String(email || '').split('@')[0] || '';
 }
 
-function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase();
-}
-
 function showError(el, msg) {
+  if (!el) return;
   el.textContent = msg;
   el.classList.remove('hidden');
 }
 
 function hideError(el) {
+  if (!el) return;
   el.textContent = '';
   el.classList.add('hidden');
 }
@@ -178,47 +175,6 @@ function showToast(msg) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2200);
-}
-
-function loadJsonFromStorage(key, fallback) {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw);
-  } catch (_e) {
-    return fallback;
-  }
-}
-
-function saveJsonToStorage(key, value) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch (_e) {
-    return false;
-  }
-}
-
-function getLocalAccounts() {
-  const accounts = loadJsonFromStorage(LOCAL_AUTH_ACCOUNTS_KEY, []);
-  return Array.isArray(accounts) ? accounts : [];
-}
-
-function saveLocalAccounts(accounts) {
-  return saveJsonToStorage(LOCAL_AUTH_ACCOUNTS_KEY, accounts);
-}
-
-function localStateKey(userId) {
-  return `${LOCAL_STATE_PREFIX}${userId}`;
-}
-
-function isNetworkFetchError(error) {
-  const msg = String(error?.message || '').toLowerCase();
-  return msg.includes('failed to fetch') || msg.includes('network') || msg.includes('fetch');
-}
-
-function deepClone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 function addHistory(type, desc) {
@@ -360,8 +316,8 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.closePath();
-    ctx.strokeStyle = l === levels ? 'rgba(220,220,220,0.35)' : 'rgba(210,210,210,0.18)';
-    ctx.lineWidth = l === levels ? 1.8 : 1.2;
+    ctx.strokeStyle = l === levels ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = l === levels ? 1.5 : 1;
     ctx.stroke();
   }
 
@@ -370,8 +326,8 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle));
-    ctx.strokeStyle = 'rgba(220,220,220,0.22)';
-    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
     ctx.stroke();
   }
 
@@ -412,9 +368,9 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
 
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd000';
+    ctx.fillStyle = colorStr(val);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -437,7 +393,7 @@ function drawRadar(canvasId, skills, secondarySkills = null) {
     ctx.font = '600 11px Barlow, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = skills[i].name === 'Coordination' ? '#f1f1f1' : '#cfcfcf';
+    ctx.fillStyle = skills[i].name === 'Coordination' ? '#f1f1f1' : colorStr(skills[i].value);
     const label = skills[i].name === 'Coordination' ? 'Coord.' : skills[i].name.toUpperCase();
     ctx.fillText(label, x, y);
   }
@@ -526,74 +482,20 @@ async function syncRemoteUserState() {
   }
 }
 
-function loadLocalUserState() {
-  if (!isLoggedIn()) return;
-
-  const data = loadJsonFromStorage(localStateKey(state.user.id), null);
-  if (!data) return;
-
-  state.skills = normalizeSkills(data.skills);
-  state.techniques = normalizeTechniques(data.techniques);
-  state.history = Array.isArray(data.history) ? data.history : [];
-  state.observations = typeof data.observations === 'string' ? data.observations : '';
-  if (obsEl) obsEl.value = state.observations;
-
-  renderSkills();
-  renderTechniques();
-  renderHistory();
-  drawRadar('radar-canvas', state.skills);
-}
-
-function syncLocalUserState() {
-  if (!isLoggedIn()) return;
-  saveJsonToStorage(localStateKey(state.user.id), {
-    pseudo: state.user.pseudo,
-    skills: state.skills,
-    techniques: state.techniques,
-    history: state.history,
-    observations: state.observations,
-    updated_at: new Date().toISOString(),
-  });
-}
-
-function syncCurrentUserState() {
-  if (!isLoggedIn()) return;
-  if (state.user.provider === 'supabase') {
-    syncRemoteUserState();
-    return;
-  }
-  syncLocalUserState();
-}
-
-function scheduleStateSync() {
-  if (!isLoggedIn() || isInitialLoading) return;
+function scheduleRemoteSync() {
+  if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
 
   remoteSyncTimer = setTimeout(() => {
-    syncCurrentUserState();
+    syncRemoteUserState();
   }, 400);
-}
-
-async function verifySupabaseConnection() {
-  if (!supabaseClient) return;
-
-  const { error } = await supabaseClient
-    .from('gong_users')
-    .select('id', { count: 'exact', head: true })
-    .limit(1);
-
-  if (error) {
-    console.warn('[Gōng] Vérification Supabase échouée', error);
-    showToast('Connexion Supabase incomplète.');
-    return;
-  }
-
-  console.info('[Gōng] Supabase connecté.');
 }
 
 // ── SKILLS UI ────────────────────────────────────────────────────────────────
 function renderSkills() {
   const container = document.getElementById('skills-list');
+  if (!container) return;
+
   container.innerHTML = '';
 
   state.skills.forEach(skill => {
@@ -641,8 +543,10 @@ function onSliderInput(e) {
   skill.value = v;
 
   const valEl = document.getElementById(`val-${id}`);
-  valEl.textContent = v;
-  valEl.style.color = colorStr(v);
+  if (valEl) {
+    valEl.textContent = v;
+    valEl.style.color = colorStr(v);
+  }
 
   updateSliderStyle(e.target, v);
   drawRadar('radar-canvas', state.skills);
@@ -656,29 +560,31 @@ function onSliderChange(e) {
 
   addHistory('skill', `${skill.name} → ${v}/10`);
   renderHistory();
-  scheduleStateSync();
+  scheduleRemoteSync();
 }
 
 // ── TECHNIQUES UI ────────────────────────────────────────────────────────────
 function renderTechniques() {
   const container = document.getElementById('techniques-list');
+  if (!container) return;
+
   container.innerHTML = '';
 
   if (!state.techniques.length) {
-    container.innerHTML = '<p class="techniques-empty">Aucune technique. Appuyez sur + pour en ajouter.</p>';
+    container.innerHTML = '<p style="color:var(--text-3);font-size:.88rem;text-align:center;padding:30px 0">Aucune technique. Appuyez sur + pour en ajouter.</p>';
     return;
   }
 
   state.techniques.forEach((tech, idx) => {
     const div = document.createElement('div');
-    div.className = `technique-item ${tech.mastered ? 'is-mastered' : ''}`;
+    div.className = 'technique-item';
     div.innerHTML = `
+      <div class="technique-check ${tech.mastered ? 'mastered' : ''}" data-idx="${idx}"></div>
+      <div class="technique-info">
+        <div class="technique-name">${tech.name}</div>
+        <div class="technique-category">${tech.category}</div>
+      </div>
       <button class="technique-delete" data-idx="${idx}" title="Supprimer">✕</button>
-      <div class="technique-category">${tech.category}</div>
-      <div class="technique-name">${tech.name}</div>
-      <button class="technique-check ${tech.mastered ? 'mastered' : ''}" data-idx="${idx}">
-        ${tech.mastered ? '✓ Maîtrisée' : 'Marquer maîtrisée'}
-      </button>
     `;
 
     div.querySelector('.technique-check').addEventListener('click', () => toggleTechnique(idx));
@@ -693,7 +599,7 @@ function toggleTechnique(idx) {
   addHistory('tech', `${state.techniques[idx].name} marquée ${status}`);
   renderTechniques();
   renderHistory();
-  scheduleStateSync();
+  scheduleRemoteSync();
 }
 
 function deleteTechnique(idx) {
@@ -702,12 +608,13 @@ function deleteTechnique(idx) {
   addHistory('tech', `Technique supprimée : ${name}`);
   renderTechniques();
   renderHistory();
-  scheduleStateSync();
+  scheduleRemoteSync();
 }
 
 // ── HISTORY ──────────────────────────────────────────────────────────────────
 function renderHistory() {
   const container = document.getElementById('history-list');
+  if (!container) return;
 
   if (!state.history.length) {
     container.innerHTML = '<p class="history-empty">Aucune modification enregistrée.</p>';
@@ -734,6 +641,8 @@ function getDemoUsers() {
 
 function renderCommunity() {
   const container = document.getElementById('community-list');
+  if (!container) return;
+
   const users = getDemoUsers();
 
   container.innerHTML = users.map((u, idx) => {
@@ -757,77 +666,26 @@ function renderCommunity() {
 }
 
 function showComparison(other) {
-  document.getElementById('compare-title').textContent = `Vous vs ${other.pseudo}`;
-  compareRadarContainer.classList.remove('hidden');
+  const title = document.getElementById('compare-title');
+  if (title) title.textContent = `Vous vs ${other.pseudo}`;
+  if (compareRadarContainer) compareRadarContainer.classList.remove('hidden');
   drawRadar('compare-canvas', state.skills, other.skills);
-}
-
-async function linkLocalAccountToSupabase(pseudo, email, password) {
-  if (!supabaseClient || !state.user || state.user.provider !== 'local') return false;
-  const normalizedEmail = normalizeEmail(email);
-  if (!normalizedEmail) return false;
-  const localSnapshot = {
-    skills: deepClone(state.skills),
-    techniques: deepClone(state.techniques),
-    history: deepClone(state.history),
-    observations: state.observations
-  };
-
-  let signIn = await supabaseClient.auth.signInWithPassword({ email: normalizedEmail, password });
-  if (signIn.error) {
-    if (isNetworkFetchError(signIn.error)) return false;
-
-    const signUp = await supabaseClient.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: { data: { pseudo } }
-    });
-
-    if (signUp.error && !String(signUp.error.message || '').toLowerCase().includes('already')) {
-      return false;
-    }
-
-    signIn = await supabaseClient.auth.signInWithPassword({ email: normalizedEmail, password });
-    if (signIn.error) return false;
-  }
-
-  const session = signIn.data?.session;
-  const user = session?.user;
-  if (!user) return false;
-
-  state.user = {
-    id: user.id,
-    pseudo: user.user_metadata?.pseudo || pseudo,
-    email: user.email,
-    provider: 'supabase'
-  };
-
-  state.skills = normalizeSkills(localSnapshot.skills);
-  state.techniques = normalizeTechniques(localSnapshot.techniques);
-  state.history = Array.isArray(localSnapshot.history) ? localSnapshot.history : [];
-  state.observations = typeof localSnapshot.observations === 'string' ? localSnapshot.observations : '';
-  if (obsEl) obsEl.value = state.observations;
-
-  updateAuthUI();
-  renderSkills();
-  renderTechniques();
-  renderHistory();
-  drawRadar('radar-canvas', state.skills);
-  await syncRemoteUserState();
-  showToast('Compte cloud synchronisé.');
-  return true;
 }
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 async function handleRegister() {
   hideError(regErrorEl);
 
-  const pseudo = regPseudoEl.value.trim();
-  const email = normalizeEmail(regEmailEl.value);
-  const password = regPasswordEl.value;
+  if (!supabaseClient) {
+    showError(regErrorEl, 'Supabase non configuré.');
+    return;
+  }
 
-  if (!pseudo || !email || !password) {
-    showError(regErrorEl, 'Pseudo, email et mot de passe requis.');
+  const pseudo = regPseudoEl?.value.trim() || '';
+  const password = regPasswordEl?.value || '';
+
+  if (!pseudo || !password) {
+    showError(regErrorEl, 'Pseudo et mot de passe requis.');
     return;
   }
 
@@ -841,132 +699,76 @@ async function handleRegister() {
     return;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showError(regErrorEl, 'Email invalide.');
-    return;
-  }
+  const email = pseudoToEmail(pseudo);
 
-  const normalized = normalizePseudo(pseudo);
-  const accounts = getLocalAccounts();
-  const localExists = accounts.some(a => a.emailNormalized === email);
-  if (localExists) {
-    showError(regErrorEl, 'Cet email existe déjà en mode local.');
-    return;
-  }
+  console.log('REGISTER START', email);
 
-  if (supabaseClient) {
-    const { error } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { pseudo }
-      }
-    });
-
-    if (!error) {
-      const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (!signIn.error) {
-        showToast(`Compte créé. Bienvenue, ${pseudo} !`);
-        closeModal('auth-modal');
-        return;
-      }
-      if (!isNetworkFetchError(signIn.error)) {
-        showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
-        return;
-      }
-    } else if (!isNetworkFetchError(error)) {
-      showError(regErrorEl, error.message || 'Inscription impossible.');
-      return;
-    }
-  }
-
-  const localUser = {
-    id: `local-${normalized}-${email.replace(/[^a-z0-9]/g, '')}`,
-    pseudo,
-    pseudoNormalized: normalized,
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
-    emailNormalized: email,
     password,
-    created_at: new Date().toISOString(),
-  };
-  accounts.push(localUser);
-  saveLocalAccounts(accounts);
-  state.user = {
-    id: localUser.id,
-    pseudo: localUser.pseudo,
-    email: localUser.email,
-    provider: 'local'
-  };
-  resetStateToDefaults();
-  updateAuthUI();
-  loadLocalUserState();
-  syncLocalUserState();
-  showToast(`Compte local créé. Bienvenue, ${pseudo} !`);
+    options: {
+      data: { pseudo }
+    }
+  });
+
+  console.log('REGISTER RESULT', data, error);
+
+  if (error) {
+    showError(regErrorEl, error.message || 'Inscription impossible.');
+    return;
+  }
+
+  const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (signIn.error) {
+    showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
+    return;
+  }
+
+  showToast(`Compte créé. Bienvenue, ${pseudo} !`);
   closeModal('auth-modal');
-  linkLocalAccountToSupabase(pseudo, email, password);
 }
 
 async function handleLogin() {
   hideError(loginErrorEl);
 
-  const pseudo = loginPseudoEl.value.trim();
-  const email = normalizeEmail(loginEmailEl.value);
-  const password = loginPasswordEl.value;
-
-  if (!email || !password) {
-    showError(loginErrorEl, 'Email et mot de passe requis.');
+  if (!supabaseClient) {
+    showError(loginErrorEl, 'Supabase non configuré.');
     return;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showError(loginErrorEl, 'Email invalide.');
+  const pseudo = loginPseudoEl?.value.trim() || '';
+  const password = loginPasswordEl?.value || '';
+
+  if (!pseudo || !password) {
+    showError(loginErrorEl, 'Pseudo et mot de passe requis.');
     return;
   }
 
-  if (supabaseClient) {
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+  const email = pseudoToEmail(pseudo);
 
-    if (!error) {
-      closeModal('auth-modal');
-      showToast(`Bienvenue, ${pseudo} !`);
-      return;
-    }
+  console.log('LOGIN START', email);
 
-    if (!isNetworkFetchError(error)) {
-      showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
-      return;
-    }
-  }
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
 
-  const account = getLocalAccounts().find(a => a.emailNormalized === email && a.password === password);
-  if (!account) {
-    showError(loginErrorEl, 'Connexion impossible (vérifiez email, mot de passe, ou réseau Supabase).');
+  console.log('LOGIN RESULT', error);
+
+  if (error) {
+    showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
     return;
   }
 
-  state.user = {
-    id: account.id,
-    pseudo: account.pseudo,
-    email: account.email || email,
-    provider: 'local'
-  };
-  resetStateToDefaults();
-  updateAuthUI();
-  isInitialLoading = true;
-  loadLocalUserState();
-  isInitialLoading = false;
   closeModal('auth-modal');
-  showToast(`Bienvenue (mode local), ${account.pseudo} !`);
-  linkLocalAccountToSupabase(account.pseudo, email, password);
+  showToast(`Bienvenue, ${pseudo} !`);
 }
 
 async function handleLogout() {
-  if (state.user?.provider === 'supabase' && supabaseClient) {
-    await supabaseClient.auth.signOut();
-  }
+  if (!supabaseClient) return;
+
+  await supabaseClient.auth.signOut();
   state.user = null;
   resetStateToDefaults();
   updateAuthUI();
@@ -979,9 +781,6 @@ async function handleLogout() {
 
 async function applySession(session) {
   if (!session?.user) {
-    if (state.user?.provider === 'local') {
-      return;
-    }
     state.user = null;
     resetStateToDefaults();
     if (obsEl) obsEl.value = '';
@@ -998,8 +797,7 @@ async function applySession(session) {
   state.user = {
     id: user.id,
     pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email),
-    email: user.email,
-    provider: 'supabase'
+    email: user.email
   };
 
   updateAuthUI();
@@ -1018,11 +816,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (obsEl) obsEl.value = state.observations || '';
 
-  saveObsBtn.addEventListener('click', () => {
-    state.observations = obsEl.value;
+  saveObsBtn?.addEventListener('click', () => {
+    state.observations = obsEl?.value || '';
     addHistory('obs', 'Observations mises à jour');
     renderHistory();
-    scheduleStateSync();
+    scheduleRemoteSync();
 
     saveObsBtn.textContent = '✓ Enregistré';
     saveObsBtn.classList.add('saved');
@@ -1035,7 +833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Observations enregistrées');
   });
 
-  authBtn.addEventListener('click', () => {
+  authBtn?.addEventListener('click', () => {
     if (state.user) {
       handleLogout();
     } else {
@@ -1043,25 +841,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  modalCloseBtn.addEventListener('click', () => closeModal('auth-modal'));
-  techniqueModalClose.addEventListener('click', () => closeModal('technique-modal'));
+  modalCloseBtn?.addEventListener('click', () => closeModal('auth-modal'));
+  techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
 
   if (closeCompareBtn) {
     closeCompareBtn.addEventListener('click', () => {
-      compareRadarContainer.classList.add('hidden');
+      compareRadarContainer?.classList.add('hidden');
     });
   }
 
-  loginBtnEl.addEventListener('click', handleLogin);
-  registerBtnEl.addEventListener('click', handleRegister);
+  loginBtnEl?.addEventListener('click', handleLogin);
+  registerBtnEl?.addEventListener('click', handleRegister);
 
-  addTechniqueBtn.addEventListener('click', () => {
+  addTechniqueBtn?.addEventListener('click', () => {
     openModal('technique-modal');
   });
 
-  addTechniqueConfirm.addEventListener('click', () => {
-    const name = newTechniqueName.value.trim();
-    const cat = newTechniqueCategory.value;
+  addTechniqueConfirm?.addEventListener('click', () => {
+    const name = newTechniqueName?.value.trim() || '';
+    const cat = newTechniqueCategory?.value || 'Autre';
 
     if (!name) {
       showToast('Entrez un nom de technique');
@@ -1072,28 +870,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     addHistory('tech', `Nouvelle technique ajoutée : ${name}`);
     renderTechniques();
     renderHistory();
-    scheduleStateSync();
+    scheduleRemoteSync();
     closeModal('technique-modal');
-    newTechniqueName.value = '';
+
+    if (newTechniqueName) newTechniqueName.value = '';
+
     showToast(`"${name}" ajoutée`);
   });
 
- if (supabaseClient) {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  await applySession(session);
-
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  if (supabaseClient) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
     await applySession(session);
-  });
-}
+
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      await applySession(session);
+    });
+  }
 });
 
 // ── SERVICE WORKER ───────────────────────────────────────────────────────────
-// TEMPORAIREMENT DÉSACTIVÉ
+// Désactivé temporairement pour éviter tout conflit pendant les tests Supabase.
 /*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Gong/service-worker.js')
+    navigator.serviceWorker.register('/Gong/sw.js')
       .then(r => console.log('[Gōng] SW enregistré', r.scope))
       .catch(e => console.warn('[Gōng] SW erreur', e));
   });
