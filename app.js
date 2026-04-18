@@ -80,6 +80,9 @@ let state = {
 let remoteSyncTimer = null;
 let isInitialLoading = false;
 
+const LOCAL_AUTH_ACCOUNTS_KEY = 'gong_local_accounts_v1';
+const LOCAL_STATE_PREFIX = 'gong_local_state_v1:';
+
 // ── DOM ──────────────────────────────────────────────────────────────────────
 const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
@@ -173,6 +176,43 @@ function showToast(msg) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2200);
+}
+
+function loadJsonFromStorage(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (_e) {
+    return fallback;
+  }
+}
+
+function saveJsonToStorage(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
+
+function getLocalAccounts() {
+  const accounts = loadJsonFromStorage(LOCAL_AUTH_ACCOUNTS_KEY, []);
+  return Array.isArray(accounts) ? accounts : [];
+}
+
+function saveLocalAccounts(accounts) {
+  return saveJsonToStorage(LOCAL_AUTH_ACCOUNTS_KEY, accounts);
+}
+
+function localStateKey(userId) {
+  return `${LOCAL_STATE_PREFIX}${userId}`;
+}
+
+function isNetworkFetchError(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  return msg.includes('failed to fetch') || msg.includes('network') || msg.includes('fetch');
 }
 
 function addHistory(type, desc) {
@@ -480,12 +520,51 @@ async function syncRemoteUserState() {
   }
 }
 
-function scheduleRemoteSync() {
-  if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
+function loadLocalUserState() {
+  if (!isLoggedIn()) return;
+
+  const data = loadJsonFromStorage(localStateKey(state.user.id), null);
+  if (!data) return;
+
+  state.skills = normalizeSkills(data.skills);
+  state.techniques = normalizeTechniques(data.techniques);
+  state.history = Array.isArray(data.history) ? data.history : [];
+  state.observations = typeof data.observations === 'string' ? data.observations : '';
+  if (obsEl) obsEl.value = state.observations;
+
+  renderSkills();
+  renderTechniques();
+  renderHistory();
+  drawRadar('radar-canvas', state.skills);
+}
+
+function syncLocalUserState() {
+  if (!isLoggedIn()) return;
+  saveJsonToStorage(localStateKey(state.user.id), {
+    pseudo: state.user.pseudo,
+    skills: state.skills,
+    techniques: state.techniques,
+    history: state.history,
+    observations: state.observations,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+function syncCurrentUserState() {
+  if (!isLoggedIn()) return;
+  if (state.user.provider === 'supabase') {
+    syncRemoteUserState();
+    return;
+  }
+  syncLocalUserState();
+}
+
+function scheduleStateSync() {
+  if (!isLoggedIn() || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
 
   remoteSyncTimer = setTimeout(() => {
-    syncRemoteUserState();
+    syncCurrentUserState();
   }, 400);
 }
 
@@ -571,7 +650,7 @@ function onSliderChange(e) {
 
   addHistory('skill', `${skill.name} → ${v}/10`);
   renderHistory();
-  scheduleRemoteSync();
+  scheduleStateSync();
 }
 
 // ── TECHNIQUES UI ────────────────────────────────────────────────────────────
@@ -608,7 +687,7 @@ function toggleTechnique(idx) {
   addHistory('tech', `${state.techniques[idx].name} marquée ${status}`);
   renderTechniques();
   renderHistory();
-  scheduleRemoteSync();
+  scheduleStateSync();
 }
 
 function deleteTechnique(idx) {
@@ -617,7 +696,7 @@ function deleteTechnique(idx) {
   addHistory('tech', `Technique supprimée : ${name}`);
   renderTechniques();
   renderHistory();
-  scheduleRemoteSync();
+  scheduleStateSync();
 }
 
 // ── HISTORY ──────────────────────────────────────────────────────────────────
@@ -681,11 +760,6 @@ function showComparison(other) {
 async function handleRegister() {
   hideError(regErrorEl);
 
-  if (!supabaseClient) {
-    showError(regErrorEl, 'Supabase non configuré.');
-    return;
-  }
-
   const pseudo = regPseudoEl.value.trim();
   const password = regPasswordEl.value;
 
@@ -704,39 +778,66 @@ async function handleRegister() {
     return;
   }
 
-  const email = pseudoToEmail(pseudo);
+  const normalized = normalizePseudo(pseudo);
+  const accounts = getLocalAccounts();
+  const localExists = accounts.some(a => a.pseudoNormalized === normalized);
+  if (localExists) {
+    showError(regErrorEl, 'Ce pseudo existe déjà en mode local.');
+    return;
+  }
 
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { pseudo }
+  if (supabaseClient) {
+    const email = pseudoToEmail(pseudo);
+    const { error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { pseudo }
+      }
+    });
+
+    if (!error) {
+      const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (!signIn.error) {
+        showToast(`Compte créé. Bienvenue, ${pseudo} !`);
+        closeModal('auth-modal');
+        return;
+      }
+      if (!isNetworkFetchError(signIn.error)) {
+        showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
+        return;
+      }
+    } else if (!isNetworkFetchError(error)) {
+      showError(regErrorEl, error.message || 'Inscription impossible.');
+      return;
     }
-  });
-
-  if (error) {
-    showError(regErrorEl, error.message || 'Inscription impossible.');
-    return;
   }
 
-  const signIn = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (signIn.error) {
-    showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.');
-    return;
-  }
-
-  showToast(`Compte créé. Bienvenue, ${pseudo} !`);
+  const localUser = {
+    id: `local-${normalized}`,
+    pseudo,
+    pseudoNormalized: normalized,
+    password,
+    created_at: new Date().toISOString(),
+  };
+  accounts.push(localUser);
+  saveLocalAccounts(accounts);
+  state.user = {
+    id: localUser.id,
+    pseudo: localUser.pseudo,
+    email: pseudoToEmail(localUser.pseudo),
+    provider: 'local'
+  };
+  resetStateToDefaults();
+  updateAuthUI();
+  loadLocalUserState();
+  syncLocalUserState();
+  showToast(`Compte local créé. Bienvenue, ${pseudo} !`);
   closeModal('auth-modal');
 }
 
 async function handleLogin() {
   hideError(loginErrorEl);
-
-  if (!supabaseClient) {
-    showError(loginErrorEl, 'Supabase non configuré.');
-    return;
-  }
 
   const pseudo = loginPseudoEl.value.trim();
   const password = loginPasswordEl.value;
@@ -746,26 +847,51 @@ async function handleLogin() {
     return;
   }
 
-  const email = pseudoToEmail(pseudo);
+  if (supabaseClient) {
+    const email = pseudoToEmail(pseudo);
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
+    if (!error) {
+      closeModal('auth-modal');
+      showToast(`Bienvenue, ${pseudo} !`);
+      return;
+    }
 
-  if (error) {
-    showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
+    if (!isNetworkFetchError(error)) {
+      showError(loginErrorEl, 'Pseudo ou mot de passe incorrect.');
+      return;
+    }
+  }
+
+  const normalized = normalizePseudo(pseudo);
+  const account = getLocalAccounts().find(a => a.pseudoNormalized === normalized && a.password === password);
+  if (!account) {
+    showError(loginErrorEl, 'Connexion impossible (vérifiez le pseudo, mot de passe, ou réseau Supabase).');
     return;
   }
 
+  state.user = {
+    id: account.id,
+    pseudo: account.pseudo,
+    email: pseudoToEmail(account.pseudo),
+    provider: 'local'
+  };
+  resetStateToDefaults();
+  updateAuthUI();
+  isInitialLoading = true;
+  loadLocalUserState();
+  isInitialLoading = false;
   closeModal('auth-modal');
-  showToast(`Bienvenue, ${pseudo} !`);
+  showToast(`Bienvenue (mode local), ${account.pseudo} !`);
 }
 
 async function handleLogout() {
-  if (!supabaseClient) return;
-
-  await supabaseClient.auth.signOut();
+  if (state.user?.provider === 'supabase' && supabaseClient) {
+    await supabaseClient.auth.signOut();
+  }
   state.user = null;
   resetStateToDefaults();
   updateAuthUI();
@@ -778,6 +904,9 @@ async function handleLogout() {
 
 async function applySession(session) {
   if (!session?.user) {
+    if (state.user?.provider === 'local') {
+      return;
+    }
     state.user = null;
     resetStateToDefaults();
     if (obsEl) obsEl.value = '';
@@ -794,7 +923,8 @@ async function applySession(session) {
   state.user = {
     id: user.id,
     pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email),
-    email: user.email
+    email: user.email,
+    provider: 'supabase'
   };
 
   updateAuthUI();
@@ -817,7 +947,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.observations = obsEl.value;
     addHistory('obs', 'Observations mises à jour');
     renderHistory();
-    scheduleRemoteSync();
+    scheduleStateSync();
 
     saveObsBtn.textContent = '✓ Enregistré';
     saveObsBtn.classList.add('saved');
@@ -867,7 +997,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     addHistory('tech', `Nouvelle technique ajoutée : ${name}`);
     renderTechniques();
     renderHistory();
-    scheduleRemoteSync();
+    scheduleStateSync();
     closeModal('technique-modal');
     newTechniqueName.value = '';
     showToast(`"${name}" ajoutée`);
@@ -888,8 +1018,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 /*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Gong/sw.js')
+    navigator.serviceWorker.register('/Gong/service-worker.js')
       .then(r => console.log('[Gōng] SW enregistré', r.scope))
       .catch(e => console.warn('[Gōng] SW erreur', e));
   });
 }
+*/
