@@ -91,11 +91,13 @@ const userDisplay = document.getElementById('user-display');
 const modalCloseBtn = document.getElementById('modal-close-btn');
 
 const loginPseudoEl = document.getElementById('login-pseudo');
+const loginEmailEl = document.getElementById('login-email');
 const loginPasswordEl = document.getElementById('login-password');
 const loginBtnEl = document.getElementById('login-btn');
 const loginErrorEl = document.getElementById('login-error');
 
 const regPseudoEl = document.getElementById('reg-pseudo');
+const regEmailEl = document.getElementById('reg-email');
 const regPasswordEl = document.getElementById('reg-password');
 const registerBtnEl = document.getElementById('register-btn');
 const regErrorEl = document.getElementById('reg-error');
@@ -152,12 +154,12 @@ function normalizePseudo(pseudo) {
     .replace(/[^a-z0-9._-]/g, '');
 }
 
-function pseudoToEmail(pseudo) {
-  return `${normalizePseudo(pseudo)}@gong.app`;
-}
-
 function safePseudoFromEmail(email) {
   return String(email || '').split('@')[0] || '';
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
 }
 
 function showError(el, msg) {
@@ -760,10 +762,10 @@ function showComparison(other) {
   drawRadar('compare-canvas', state.skills, other.skills);
 }
 
-async function linkLocalAccountToSupabase(pseudo, password) {
+async function linkLocalAccountToSupabase(pseudo, email, password) {
   if (!supabaseClient || !state.user || state.user.provider !== 'local') return false;
-
-  const email = pseudoToEmail(pseudo);
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return false;
   const localSnapshot = {
     skills: deepClone(state.skills),
     techniques: deepClone(state.techniques),
@@ -771,12 +773,12 @@ async function linkLocalAccountToSupabase(pseudo, password) {
     observations: state.observations
   };
 
-  let signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+  let signIn = await supabaseClient.auth.signInWithPassword({ email: normalizedEmail, password });
   if (signIn.error) {
     if (isNetworkFetchError(signIn.error)) return false;
 
     const signUp = await supabaseClient.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: { data: { pseudo } }
     });
@@ -785,7 +787,7 @@ async function linkLocalAccountToSupabase(pseudo, password) {
       return false;
     }
 
-    signIn = await supabaseClient.auth.signInWithPassword({ email, password });
+    signIn = await supabaseClient.auth.signInWithPassword({ email: normalizedEmail, password });
     if (signIn.error) return false;
   }
 
@@ -821,10 +823,11 @@ async function handleRegister() {
   hideError(regErrorEl);
 
   const pseudo = regPseudoEl.value.trim();
+  const email = normalizeEmail(regEmailEl.value);
   const password = regPasswordEl.value;
 
-  if (!pseudo || !password) {
-    showError(regErrorEl, 'Pseudo et mot de passe requis.');
+  if (!pseudo || !email || !password) {
+    showError(regErrorEl, 'Pseudo, email et mot de passe requis.');
     return;
   }
 
@@ -838,16 +841,20 @@ async function handleRegister() {
     return;
   }
 
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showError(regErrorEl, 'Email invalide.');
+    return;
+  }
+
   const normalized = normalizePseudo(pseudo);
   const accounts = getLocalAccounts();
-  const localExists = accounts.some(a => a.pseudoNormalized === normalized);
+  const localExists = accounts.some(a => a.emailNormalized === email);
   if (localExists) {
-    showError(regErrorEl, 'Ce pseudo existe déjà en mode local.');
+    showError(regErrorEl, 'Cet email existe déjà en mode local.');
     return;
   }
 
   if (supabaseClient) {
-    const email = pseudoToEmail(pseudo);
     const { error } = await supabaseClient.auth.signUp({
       email,
       password,
@@ -874,9 +881,11 @@ async function handleRegister() {
   }
 
   const localUser = {
-    id: `local-${normalized}`,
+    id: `local-${normalized}-${email.replace(/[^a-z0-9]/g, '')}`,
     pseudo,
     pseudoNormalized: normalized,
+    email,
+    emailNormalized: email,
     password,
     created_at: new Date().toISOString(),
   };
@@ -885,7 +894,7 @@ async function handleRegister() {
   state.user = {
     id: localUser.id,
     pseudo: localUser.pseudo,
-    email: pseudoToEmail(localUser.pseudo),
+    email: localUser.email,
     provider: 'local'
   };
   resetStateToDefaults();
@@ -894,22 +903,27 @@ async function handleRegister() {
   syncLocalUserState();
   showToast(`Compte local créé. Bienvenue, ${pseudo} !`);
   closeModal('auth-modal');
-  linkLocalAccountToSupabase(pseudo, password);
+  linkLocalAccountToSupabase(pseudo, email, password);
 }
 
 async function handleLogin() {
   hideError(loginErrorEl);
 
   const pseudo = loginPseudoEl.value.trim();
+  const email = normalizeEmail(loginEmailEl.value);
   const password = loginPasswordEl.value;
 
-  if (!pseudo || !password) {
-    showError(loginErrorEl, 'Pseudo et mot de passe requis.');
+  if (!email || !password) {
+    showError(loginErrorEl, 'Email et mot de passe requis.');
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showError(loginErrorEl, 'Email invalide.');
     return;
   }
 
   if (supabaseClient) {
-    const email = pseudoToEmail(pseudo);
     const { error } = await supabaseClient.auth.signInWithPassword({
       email,
       password
@@ -927,17 +941,16 @@ async function handleLogin() {
     }
   }
 
-  const normalized = normalizePseudo(pseudo);
-  const account = getLocalAccounts().find(a => a.pseudoNormalized === normalized && a.password === password);
+  const account = getLocalAccounts().find(a => a.emailNormalized === email && a.password === password);
   if (!account) {
-    showError(loginErrorEl, 'Connexion impossible (vérifiez le pseudo, mot de passe, ou réseau Supabase).');
+    showError(loginErrorEl, 'Connexion impossible (vérifiez email, mot de passe, ou réseau Supabase).');
     return;
   }
 
   state.user = {
     id: account.id,
     pseudo: account.pseudo,
-    email: pseudoToEmail(account.pseudo),
+    email: account.email || email,
     provider: 'local'
   };
   resetStateToDefaults();
@@ -947,7 +960,7 @@ async function handleLogin() {
   isInitialLoading = false;
   closeModal('auth-modal');
   showToast(`Bienvenue (mode local), ${account.pseudo} !`);
-  linkLocalAccountToSupabase(account.pseudo, password);
+  linkLocalAccountToSupabase(account.pseudo, email, password);
 }
 
 async function handleLogout() {
