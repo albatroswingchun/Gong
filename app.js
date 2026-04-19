@@ -182,6 +182,9 @@ function injectDynamicStyles() {
     .community-stat-label { color:rgba(255,255,255,0.82); }
     .community-stat-value { color:#ffd000; font-weight:700; }
     .forms-count { color:#ffd000; font-weight:700; }
+    .community-item-self { border-color:rgba(255,208,0,0.32); background:linear-gradient(90deg, rgba(255,208,0,0.10), rgba(255,255,255,0.03)); }
+    .community-pseudo-line { display:flex; align-items:center; gap:8px; }
+    .community-badge { font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:#ffd000; border:1px solid rgba(255,208,0,0.35); border-radius:999px; padding:2px 8px; }
     .compare-forms { display:none !important; }
   `;
   document.head.appendChild(style);
@@ -336,6 +339,14 @@ function closeModal(id) {
   if (el) el.classList.add('hidden');
 }
 
+function enforceAuthModalPriority() {
+  if (state.user) {
+    closeModal('auth-modal');
+    return;
+  }
+  openModal('auth-modal');
+}
+
 function updateAuthUI() {
   if (state.user) {
     if (authBtn) { authBtn.textContent = 'Déconnexion'; authBtn.classList.add('logged-in'); }
@@ -346,6 +357,14 @@ function updateAuthUI() {
   }
 }
 
+function scrollAppToTop() {
+  const mainContent = document.getElementById('main-content');
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  if (mainContent) mainContent.scrollTop = 0;
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-section').forEach((s) => s.classList.toggle('active', s.id === `tab-${name}`));
@@ -353,10 +372,17 @@ function switchTab(name) {
   if (name === 'techniques') { renderTechniqueFilters(); renderTechniques(); }
   if (name === 'historique') renderHistory();
   if (name === 'communaute') renderCommunity();
+  scrollAppToTop();
+  requestAnimationFrame(scrollAppToTop);
 }
 
 document.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => { document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); }));
+document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.modal').forEach((m) => {
+    if (m.id === 'auth-modal' && !state.user) return;
+    m.classList.add('hidden');
+  });
+}));
 document.querySelectorAll('.modal-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.modal-tab').forEach((t) => t.classList.remove('active'));
@@ -671,19 +697,45 @@ async function renderCommunity() {
     container.innerHTML = '<p class="community-empty">Erreur de chargement.</p>';
     return;
   }
-  const users = (data || []).filter((u) => u.id !== state.user?.id);
+  const allUsers = data || [];
+  const currentUserProfile = allUsers.find((u) => u.id === state.user?.id);
+  const users = allUsers.filter((u) => u.id !== state.user?.id);
+
+  const ownCard = currentUserProfile ? (() => {
+    const ownSkills = normalizeSkills(currentUserProfile.skills);
+    const ownAvg = ownSkills.length ? (ownSkills.reduce((s, k) => s + (k.value || 0), 0) / ownSkills.length).toFixed(1) : '0';
+    const ownFormsSummary = getFormsSummary(currentUserProfile.techniques);
+    return `
+      <div class="community-item community-item-self">
+        <div class="community-item-main">
+          <div class="community-pseudo-line">
+            <div class="community-pseudo">${currentUserProfile.pseudo}</div>
+            <span class="community-badge">Votre score</span>
+          </div>
+          <div class="community-stats">
+            <span class="community-stat"><span class="community-stat-label">Moyenne :</span> <span class="community-stat-value">${ownAvg}/10</span></span>
+            <span class="community-stat"><span class="community-stat-label">Formes :</span> <span class="community-stat-value forms-count">${ownFormsSummary.display}</span></span>
+          </div>
+        </div>
+      </div>
+    `;
+  })() : '';
+
   if (!users.length) {
-    container.innerHTML = '<p class="community-empty">Aucun utilisateur.</p>';
+    container.innerHTML = `${ownCard}<p class="community-empty">Aucun autre utilisateur pour le moment.</p>`;
     return;
   }
-  container.innerHTML = users.map((user) => {
+
+  const others = users.map((user) => {
     const skills = normalizeSkills(user.skills);
     const avg = skills.length ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1) : '0';
     const formsSummary = getFormsSummary(user.techniques);
     return `
       <div class="community-item">
         <div class="community-item-main">
-          <div class="community-pseudo">${user.pseudo}</div>
+          <div class="community-pseudo-line">
+            <div class="community-pseudo">${user.pseudo}</div>
+          </div>
           <div class="community-stats">
             <span class="community-stat"><span class="community-stat-label">Moyenne :</span> <span class="community-stat-value">${avg}/10</span></span>
             <span class="community-stat"><span class="community-stat-label">Formes :</span> <span class="community-stat-value forms-count">${formsSummary.display}</span></span>
@@ -693,6 +745,8 @@ async function renderCommunity() {
       </div>
     `;
   }).join('');
+
+  container.innerHTML = `${ownCard}${others}`;
   container.querySelectorAll('.btn-compare').forEach((btn) => {
     btn.addEventListener('click', () => {
       const user = users.find((u) => u.id === btn.dataset.id);
@@ -767,11 +821,13 @@ async function applySession(session) {
     renderTechniques();
     renderHistory();
     drawRadar('radar-canvas', state.skills);
+    enforceAuthModalPriority();
     return;
   }
   const user = session.user;
   state.user = { id: user.id, pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email), email: user.email };
   updateAuthUI();
+  enforceAuthModalPriority();
   isInitialLoading = true;
   await loadRemoteUserState();
   isInitialLoading = false;
@@ -795,6 +851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
+  enforceAuthModalPriority();
   if (obsEl) obsEl.value = state.observations || '';
   saveObsBtn?.addEventListener('click', () => {
     state.observations = obsEl?.value || '';
@@ -807,7 +864,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Observations enregistrées');
   });
   authBtn?.addEventListener('click', () => { if (state.user) handleLogout(); else openModal('auth-modal'); });
-  modalCloseBtn?.addEventListener('click', () => closeModal('auth-modal'));
+  modalCloseBtn?.addEventListener('click', () => {
+    if (!state.user) return;
+    closeModal('auth-modal');
+  });
   techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
   if (closeCompareBtn) closeCompareBtn.addEventListener('click', () => { compareRadarContainer?.classList.add('hidden'); renderFormsComparison(); });
   loginBtnEl?.addEventListener('click', handleLogin);
