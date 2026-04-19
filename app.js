@@ -357,6 +357,14 @@ function updateAuthUI() {
   }
 }
 
+function scrollAppToTop() {
+  const mainContent = document.getElementById('main-content');
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  if (mainContent) mainContent.scrollTop = 0;
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-section').forEach((s) => s.classList.toggle('active', s.id === `tab-${name}`));
@@ -367,6 +375,8 @@ function switchTab(name) {
   if (name === 'techniques') { renderTechniqueFilters(); renderTechniques(); }
   if (name === 'historique') renderHistory();
   if (name === 'communaute') renderCommunity();
+  scrollAppToTop();
+  requestAnimationFrame(scrollAppToTop);
 }
 
 document.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
