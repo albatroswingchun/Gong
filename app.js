@@ -141,6 +141,8 @@ let state = {
 let remoteSyncTimer = null;
 let isInitialLoading = false;
 let deferredInstallPrompt = null;
+let forceAuthModalOnStartup = true;
+const LOCAL_STATE_KEY = 'gong_local_state_v1';
 
 const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
@@ -182,6 +184,9 @@ function injectDynamicStyles() {
     .community-stat-label { color:rgba(255,255,255,0.82); }
     .community-stat-value { color:#ffd000; font-weight:700; }
     .forms-count { color:#ffd000; font-weight:700; }
+    .community-item-self { border-color:rgba(255,208,0,0.32); background:linear-gradient(90deg, rgba(255,208,0,0.10), rgba(255,255,255,0.03)); }
+    .community-pseudo-line { display:flex; align-items:center; gap:8px; }
+    .community-badge { font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:#ffd000; border:1px solid rgba(255,208,0,0.35); border-radius:999px; padding:2px 8px; }
     .compare-forms { display:none !important; }
   `;
   document.head.appendChild(style);
@@ -336,6 +341,64 @@ function closeModal(id) {
   if (el) el.classList.add('hidden');
 }
 
+function saveLocalState() {
+  try {
+    const payload = {
+      skills: normalizeSkills(state.skills),
+      techniques: normalizeTechniques(state.techniques),
+      history: Array.isArray(state.history) ? state.history : [],
+      observations: typeof state.observations === 'string' ? state.observations : '',
+      updated_at: new Date().toISOString(),
+    };
+    window.localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(payload));
+  } catch (err) {
+    console.warn('[Gōng] Local save error', err);
+  }
+}
+
+function hasLocalStateSnapshot() {
+  try {
+    return !!window.localStorage.getItem(LOCAL_STATE_KEY);
+  } catch {
+    return false;
+  }
+}
+
+function loadLocalState() {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_STATE_KEY);
+    if (!raw) return false;
+    const payload = JSON.parse(raw);
+    state.skills = normalizeSkills(payload?.skills);
+    state.techniques = normalizeTechniques(payload?.techniques);
+    state.history = Array.isArray(payload?.history) ? payload.history : [];
+    state.observations = typeof payload?.observations === 'string' ? payload.observations : '';
+    state.techniqueFilter = 'Toutes';
+    if (obsEl) obsEl.value = state.observations;
+    return true;
+  } catch (err) {
+    console.warn('[Gōng] Local load error', err);
+    return false;
+  }
+}
+
+function enforceAuthModalPriority() {
+  if (forceAuthModalOnStartup) {
+    if (!state.user && hasLocalStateSnapshot()) return;
+    openModal('auth-modal');
+    return;
+  }
+  if (state.user) {
+    closeModal('auth-modal');
+    return;
+  }
+  openModal('auth-modal');
+}
+
+function releaseStartupAuthGate() {
+  forceAuthModalOnStartup = false;
+}
+
 function updateAuthUI() {
   if (state.user) {
     if (authBtn) { authBtn.textContent = 'Déconnexion'; authBtn.classList.add('logged-in'); }
@@ -346,6 +409,14 @@ function updateAuthUI() {
   }
 }
 
+function scrollAppToTop() {
+  const mainContent = document.getElementById('main-content');
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  if (mainContent) mainContent.scrollTop = 0;
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-section').forEach((s) => s.classList.toggle('active', s.id === `tab-${name}`));
@@ -353,10 +424,18 @@ function switchTab(name) {
   if (name === 'techniques') { renderTechniqueFilters(); renderTechniques(); }
   if (name === 'historique') renderHistory();
   if (name === 'communaute') renderCommunity();
+  scrollAppToTop();
+  requestAnimationFrame(scrollAppToTop);
 }
 
 document.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => { document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); }));
+document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.modal').forEach((m) => {
+    if (m.id === 'auth-modal' && !state.user) return;
+    if (m.id === 'auth-modal') releaseStartupAuthGate();
+    m.classList.add('hidden');
+  });
+}));
 document.querySelectorAll('.modal-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.modal-tab').forEach((t) => t.classList.remove('active'));
@@ -523,6 +602,7 @@ async function syncRemoteUserState() {
 }
 
 function scheduleRemoteSync() {
+  saveLocalState();
   if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
   remoteSyncTimer = setTimeout(() => { syncRemoteUserState(); }, 400);
@@ -572,6 +652,7 @@ function onSliderInput(e) {
   if (valEl) { valEl.textContent = v; valEl.style.color = colorStr(v); }
   updateSliderStyle(e.target, v);
   drawRadar('radar-canvas', state.skills);
+  scheduleRemoteSync();
 }
 
 function onSliderChange(e) {
@@ -671,19 +752,45 @@ async function renderCommunity() {
     container.innerHTML = '<p class="community-empty">Erreur de chargement.</p>';
     return;
   }
-  const users = (data || []).filter((u) => u.id !== state.user?.id);
+  const allUsers = data || [];
+  const currentUserProfile = allUsers.find((u) => u.id === state.user?.id);
+  const users = allUsers.filter((u) => u.id !== state.user?.id);
+
+  const ownCard = currentUserProfile ? (() => {
+    const ownSkills = normalizeSkills(currentUserProfile.skills);
+    const ownAvg = ownSkills.length ? (ownSkills.reduce((s, k) => s + (k.value || 0), 0) / ownSkills.length).toFixed(1) : '0';
+    const ownFormsSummary = getFormsSummary(currentUserProfile.techniques);
+    return `
+      <div class="community-item community-item-self">
+        <div class="community-item-main">
+          <div class="community-pseudo-line">
+            <div class="community-pseudo">${currentUserProfile.pseudo}</div>
+            <span class="community-badge">Votre score</span>
+          </div>
+          <div class="community-stats">
+            <span class="community-stat"><span class="community-stat-label">Moyenne :</span> <span class="community-stat-value">${ownAvg}/10</span></span>
+            <span class="community-stat"><span class="community-stat-label">Formes :</span> <span class="community-stat-value forms-count">${ownFormsSummary.display}</span></span>
+          </div>
+        </div>
+      </div>
+    `;
+  })() : '';
+
   if (!users.length) {
-    container.innerHTML = '<p class="community-empty">Aucun utilisateur.</p>';
+    container.innerHTML = `${ownCard}<p class="community-empty">Aucun autre utilisateur pour le moment.</p>`;
     return;
   }
-  container.innerHTML = users.map((user) => {
+
+  const others = users.map((user) => {
     const skills = normalizeSkills(user.skills);
     const avg = skills.length ? (skills.reduce((s, k) => s + (k.value || 0), 0) / skills.length).toFixed(1) : '0';
     const formsSummary = getFormsSummary(user.techniques);
     return `
       <div class="community-item">
         <div class="community-item-main">
-          <div class="community-pseudo">${user.pseudo}</div>
+          <div class="community-pseudo-line">
+            <div class="community-pseudo">${user.pseudo}</div>
+          </div>
           <div class="community-stats">
             <span class="community-stat"><span class="community-stat-label">Moyenne :</span> <span class="community-stat-value">${avg}/10</span></span>
             <span class="community-stat"><span class="community-stat-label">Formes :</span> <span class="community-stat-value forms-count">${formsSummary.display}</span></span>
@@ -693,6 +800,8 @@ async function renderCommunity() {
       </div>
     `;
   }).join('');
+
+  container.innerHTML = `${ownCard}${others}`;
   container.querySelectorAll('.btn-compare').forEach((btn) => {
     btn.addEventListener('click', () => {
       const user = users.find((u) => u.id === btn.dataset.id);
@@ -726,6 +835,7 @@ async function handleRegister() {
   if (signIn.error) { showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.'); return; }
   console.log('REGISTER RESULT', data);
   showToast(`Compte créé. Bienvenue, ${pseudo} !`);
+  releaseStartupAuthGate();
   closeModal('auth-modal');
 }
 
@@ -738,6 +848,7 @@ async function handleLogin() {
   const email = identifier.includes('@') ? identifier.toLowerCase() : pseudoToEmail(identifier);
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) { showError(loginErrorEl, 'Identifiant ou mot de passe incorrect.'); return; }
+  releaseStartupAuthGate();
   closeModal('auth-modal');
   showToast('Connexion réussie');
 }
@@ -760,18 +871,22 @@ async function applySession(session) {
   if (!session?.user) {
     state.user = null;
     resetStateToDefaults();
-    if (obsEl) obsEl.value = '';
+    loadLocalState();
+    if (obsEl) obsEl.value = state.observations || '';
     updateAuthUI();
     renderSkills();
     renderTechniqueFilters();
     renderTechniques();
     renderHistory();
     drawRadar('radar-canvas', state.skills);
+    enforceAuthModalPriority();
     return;
   }
   const user = session.user;
   state.user = { id: user.id, pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email), email: user.email };
+  releaseStartupAuthGate();
   updateAuthUI();
+  enforceAuthModalPriority();
   isInitialLoading = true;
   await loadRemoteUserState();
   isInitialLoading = false;
@@ -790,11 +905,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   injectDynamicStyles();
   ensureTechniqueFiltersContainer();
   ensureFormesOption();
+  loadLocalState();
   renderSkills();
   renderTechniqueFilters();
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
+  enforceAuthModalPriority();
   if (obsEl) obsEl.value = state.observations || '';
   saveObsBtn?.addEventListener('click', () => {
     state.observations = obsEl?.value || '';
@@ -807,7 +924,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Observations enregistrées');
   });
   authBtn?.addEventListener('click', () => { if (state.user) handleLogout(); else openModal('auth-modal'); });
-  modalCloseBtn?.addEventListener('click', () => closeModal('auth-modal'));
+  modalCloseBtn?.addEventListener('click', () => {
+    if (!state.user) return;
+    releaseStartupAuthGate();
+    closeModal('auth-modal');
+  });
   techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
   if (closeCompareBtn) closeCompareBtn.addEventListener('click', () => { compareRadarContainer?.classList.add('hidden'); renderFormsComparison(); });
   loginBtnEl?.addEventListener('click', handleLogin);
