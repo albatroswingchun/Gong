@@ -842,6 +842,7 @@ async function applySession(session) {
   }
   const user = session.user;
   state.user = { id: user.id, pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email), email: user.email };
+  releaseStartupAuthGate();
   updateAuthUI();
   enforceAuthModalPriority();
   isInitialLoading = true;
