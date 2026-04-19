@@ -377,6 +377,9 @@ function scrollAppToTop() {
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-section').forEach((s) => s.classList.toggle('active', s.id === `tab-${name}`));
+  const mainContent = document.getElementById('main-content');
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  if (mainContent) mainContent.scrollTop = 0;
   if (name === 'profil') drawRadar('radar-canvas', state.skills);
   if (name === 'techniques') { renderTechniqueFilters(); renderTechniques(); }
   if (name === 'historique') renderHistory();
