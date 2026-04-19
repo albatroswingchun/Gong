@@ -339,6 +339,14 @@ function closeModal(id) {
   if (el) el.classList.add('hidden');
 }
 
+function enforceAuthModalPriority() {
+  if (state.user) {
+    closeModal('auth-modal');
+    return;
+  }
+  openModal('auth-modal');
+}
+
 function updateAuthUI() {
   if (state.user) {
     if (authBtn) { authBtn.textContent = 'Déconnexion'; authBtn.classList.add('logged-in'); }
@@ -359,7 +367,12 @@ function switchTab(name) {
 }
 
 document.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => { document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); }));
+document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.modal').forEach((m) => {
+    if (m.id === 'auth-modal' && !state.user) return;
+    m.classList.add('hidden');
+  });
+}));
 document.querySelectorAll('.modal-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.modal-tab').forEach((t) => t.classList.remove('active'));
@@ -798,11 +811,13 @@ async function applySession(session) {
     renderTechniques();
     renderHistory();
     drawRadar('radar-canvas', state.skills);
+    enforceAuthModalPriority();
     return;
   }
   const user = session.user;
   state.user = { id: user.id, pseudo: user.user_metadata?.pseudo || safePseudoFromEmail(user.email), email: user.email };
   updateAuthUI();
+  enforceAuthModalPriority();
   isInitialLoading = true;
   await loadRemoteUserState();
   isInitialLoading = false;
@@ -826,6 +841,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderTechniques();
   renderHistory();
   drawRadar('radar-canvas', state.skills);
+  enforceAuthModalPriority();
   if (obsEl) obsEl.value = state.observations || '';
   saveObsBtn?.addEventListener('click', () => {
     state.observations = obsEl?.value || '';
@@ -838,7 +854,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Observations enregistrées');
   });
   authBtn?.addEventListener('click', () => { if (state.user) handleLogout(); else openModal('auth-modal'); });
-  modalCloseBtn?.addEventListener('click', () => closeModal('auth-modal'));
+  modalCloseBtn?.addEventListener('click', () => {
+    if (!state.user) return;
+    closeModal('auth-modal');
+  });
   techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
   if (closeCompareBtn) closeCompareBtn.addEventListener('click', () => { compareRadarContainer?.classList.add('hidden'); renderFormsComparison(); });
   loginBtnEl?.addEventListener('click', handleLogin);
