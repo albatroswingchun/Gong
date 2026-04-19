@@ -142,6 +142,7 @@ let remoteSyncTimer = null;
 let isInitialLoading = false;
 let deferredInstallPrompt = null;
 let forceAuthModalOnStartup = true;
+const LOCAL_STATE_KEY = 'gong_local_state_v1';
 
 const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
@@ -340,8 +341,50 @@ function closeModal(id) {
   if (el) el.classList.add('hidden');
 }
 
+function saveLocalState() {
+  try {
+    const payload = {
+      skills: normalizeSkills(state.skills),
+      techniques: normalizeTechniques(state.techniques),
+      history: Array.isArray(state.history) ? state.history : [],
+      observations: typeof state.observations === 'string' ? state.observations : '',
+      updated_at: new Date().toISOString(),
+    };
+    window.localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(payload));
+  } catch (err) {
+    console.warn('[Gōng] Local save error', err);
+  }
+}
+
+function hasLocalStateSnapshot() {
+  try {
+    return !!window.localStorage.getItem(LOCAL_STATE_KEY);
+  } catch {
+    return false;
+  }
+}
+
+function loadLocalState() {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_STATE_KEY);
+    if (!raw) return false;
+    const payload = JSON.parse(raw);
+    state.skills = normalizeSkills(payload?.skills);
+    state.techniques = normalizeTechniques(payload?.techniques);
+    state.history = Array.isArray(payload?.history) ? payload.history : [];
+    state.observations = typeof payload?.observations === 'string' ? payload.observations : '';
+    state.techniqueFilter = 'Toutes';
+    if (obsEl) obsEl.value = state.observations;
+    return true;
+  } catch (err) {
+    console.warn('[Gōng] Local load error', err);
+    return false;
+  }
+}
+
 function enforceAuthModalPriority() {
   if (forceAuthModalOnStartup) {
+    if (!state.user && hasLocalStateSnapshot()) return;
     openModal('auth-modal');
     return;
   }
@@ -562,6 +605,7 @@ async function syncRemoteUserState() {
 }
 
 function scheduleRemoteSync() {
+  saveLocalState();
   if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
   remoteSyncTimer = setTimeout(() => { syncRemoteUserState(); }, 400);
@@ -830,7 +874,8 @@ async function applySession(session) {
   if (!session?.user) {
     state.user = null;
     resetStateToDefaults();
-    if (obsEl) obsEl.value = '';
+    loadLocalState();
+    if (obsEl) obsEl.value = state.observations || '';
     updateAuthUI();
     renderSkills();
     renderTechniqueFilters();
@@ -863,6 +908,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   injectDynamicStyles();
   ensureTechniqueFiltersContainer();
   ensureFormesOption();
+  loadLocalState();
   renderSkills();
   renderTechniqueFilters();
   renderTechniques();
