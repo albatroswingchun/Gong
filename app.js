@@ -141,6 +141,7 @@ let state = {
 let remoteSyncTimer = null;
 let isInitialLoading = false;
 let deferredInstallPrompt = null;
+let forceAuthModalOnStartup = true;
 
 const obsEl = document.getElementById('observations');
 const authBtn = document.getElementById('auth-btn');
@@ -340,11 +341,19 @@ function closeModal(id) {
 }
 
 function enforceAuthModalPriority() {
+  if (forceAuthModalOnStartup) {
+    openModal('auth-modal');
+    return;
+  }
   if (state.user) {
     closeModal('auth-modal');
     return;
   }
   openModal('auth-modal');
+}
+
+function releaseStartupAuthGate() {
+  forceAuthModalOnStartup = false;
 }
 
 function updateAuthUI() {
@@ -383,6 +392,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('cli
 document.querySelectorAll('.modal-backdrop').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('.modal').forEach((m) => {
     if (m.id === 'auth-modal' && !state.user) return;
+    if (m.id === 'auth-modal') releaseStartupAuthGate();
     m.classList.add('hidden');
   });
 }));
@@ -601,6 +611,7 @@ function onSliderInput(e) {
   if (valEl) { valEl.textContent = v; valEl.style.color = colorStr(v); }
   updateSliderStyle(e.target, v);
   drawRadar('radar-canvas', state.skills);
+  scheduleRemoteSync();
 }
 
 function onSliderChange(e) {
@@ -783,6 +794,7 @@ async function handleRegister() {
   if (signIn.error) { showError(regErrorEl, signIn.error.message || 'Connexion impossible après inscription.'); return; }
   console.log('REGISTER RESULT', data);
   showToast(`Compte créé. Bienvenue, ${pseudo} !`);
+  releaseStartupAuthGate();
   closeModal('auth-modal');
 }
 
@@ -795,6 +807,7 @@ async function handleLogin() {
   const email = identifier.includes('@') ? identifier.toLowerCase() : pseudoToEmail(identifier);
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) { showError(loginErrorEl, 'Identifiant ou mot de passe incorrect.'); return; }
+  releaseStartupAuthGate();
   closeModal('auth-modal');
   showToast('Connexion réussie');
 }
@@ -869,6 +882,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   authBtn?.addEventListener('click', () => { if (state.user) handleLogout(); else openModal('auth-modal'); });
   modalCloseBtn?.addEventListener('click', () => {
     if (!state.user) return;
+    releaseStartupAuthGate();
     closeModal('auth-modal');
   });
   techniqueModalClose?.addEventListener('click', () => closeModal('technique-modal'));
