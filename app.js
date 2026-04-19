@@ -776,15 +776,16 @@ async function renderCommunity() {
   const currentUserProfile = allUsers.find((u) => u.id === state.user?.id);
   const users = allUsers.filter((u) => u.id !== state.user?.id);
 
-  const ownCard = currentUserProfile ? (() => {
-    const ownSkills = normalizeSkills(currentUserProfile.skills);
+  const ownCard = state.user ? (() => {
+    const ownSkills = normalizeSkills(state.skills);
     const ownAvg = ownSkills.length ? (ownSkills.reduce((s, k) => s + (k.value || 0), 0) / ownSkills.length).toFixed(1) : '0';
-    const ownFormsSummary = getFormsSummary(currentUserProfile.techniques);
+    const ownFormsSummary = getFormsSummary(state.techniques);
+    const ownPseudo = state.user?.pseudo || currentUserProfile?.pseudo || 'Vous';
     return `
       <div class="community-item community-item-self">
         <div class="community-item-main">
           <div class="community-pseudo-line">
-            <div class="community-pseudo">${currentUserProfile.pseudo}</div>
+            <div class="community-pseudo">${ownPseudo}</div>
             <span class="community-badge">Votre score</span>
           </div>
           <div class="community-stats">

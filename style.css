@@ -101,6 +101,13 @@ body {
   color: var(--text-0);
 }
 
+.logo-subtitle {
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
 .header-right {
   display: flex;
   align-items: center;
