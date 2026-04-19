@@ -622,6 +622,7 @@ async function syncRemoteUserState() {
 }
 
 function scheduleRemoteSync() {
+  renderOwnCommunityStats();
   saveLocalState();
   if (!isLoggedIn() || !supabaseClient || isInitialLoading) return;
   if (remoteSyncTimer) clearTimeout(remoteSyncTimer);
@@ -758,6 +759,16 @@ function renderFormsComparison() {
   compareFormsEl.innerHTML = '';
 }
 
+function renderOwnCommunityStats() {
+  const ownSkills = normalizeSkills(state.skills);
+  const ownAvg = ownSkills.length ? (ownSkills.reduce((s, k) => s + (k.value || 0), 0) / ownSkills.length).toFixed(1) : '0';
+  const ownFormsSummary = getFormsSummary(state.techniques);
+  const avgEl = document.getElementById('community-own-avg');
+  const formsEl = document.getElementById('community-own-forms');
+  if (avgEl) avgEl.textContent = `${ownAvg}/10`;
+  if (formsEl) formsEl.textContent = ownFormsSummary.display;
+}
+
 async function renderCommunity() {
   const container = document.getElementById('community-list');
   if (!container) return;
@@ -789,8 +800,8 @@ async function renderCommunity() {
             <span class="community-badge">Votre score</span>
           </div>
           <div class="community-stats">
-            <span class="community-stat"><span class="community-stat-label">Moyenne :</span> <span class="community-stat-value">${ownAvg}/10</span></span>
-            <span class="community-stat"><span class="community-stat-label">Formes :</span> <span class="community-stat-value forms-count">${ownFormsSummary.display}</span></span>
+            <span class="community-stat"><span class="community-stat-label">Moyenne :</span> <span id="community-own-avg" class="community-stat-value">${ownAvg}/10</span></span>
+            <span class="community-stat"><span class="community-stat-label">Formes :</span> <span id="community-own-forms" class="community-stat-value forms-count">${ownFormsSummary.display}</span></span>
           </div>
         </div>
       </div>
