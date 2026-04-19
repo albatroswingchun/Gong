@@ -356,6 +356,24 @@ function saveLocalState() {
   }
 }
 
+function readLocalStateSnapshot() {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_STATE_KEY);
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    return {
+      skills: normalizeSkills(payload?.skills),
+      techniques: normalizeTechniques(payload?.techniques),
+      history: Array.isArray(payload?.history) ? payload.history : [],
+      observations: typeof payload?.observations === 'string' ? payload.observations : '',
+      updatedAtTs: Date.parse(payload?.updated_at || '') || 0,
+    };
+  } catch (err) {
+    console.warn('[Gōng] Local read error', err);
+    return null;
+  }
+}
+
 function hasLocalStateSnapshot() {
   try {
     return !!window.localStorage.getItem(LOCAL_STATE_KEY);
@@ -365,21 +383,15 @@ function hasLocalStateSnapshot() {
 }
 
 function loadLocalState() {
-  try {
-    const raw = window.localStorage.getItem(LOCAL_STATE_KEY);
-    if (!raw) return false;
-    const payload = JSON.parse(raw);
-    state.skills = normalizeSkills(payload?.skills);
-    state.techniques = normalizeTechniques(payload?.techniques);
-    state.history = Array.isArray(payload?.history) ? payload.history : [];
-    state.observations = typeof payload?.observations === 'string' ? payload.observations : '';
-    state.techniqueFilter = 'Toutes';
-    if (obsEl) obsEl.value = state.observations;
-    return true;
-  } catch (err) {
-    console.warn('[Gōng] Local load error', err);
-    return false;
-  }
+  const snapshot = readLocalStateSnapshot();
+  if (!snapshot) return false;
+  state.skills = snapshot.skills;
+  state.techniques = snapshot.techniques;
+  state.history = snapshot.history;
+  state.observations = snapshot.observations;
+  state.techniqueFilter = 'Toutes';
+  if (obsEl) obsEl.value = state.observations;
+  return true;
 }
 
 function enforceAuthModalPriority() {
@@ -577,16 +589,21 @@ async function ensureRemoteRow() {
 
 async function loadRemoteUserState() {
   if (!isLoggedIn() || !supabaseClient) return;
-  const { data, error } = await supabaseClient.from('gong_users').select('id, pseudo, skills, techniques, history, observations').eq('id', state.user.id).maybeSingle();
+  const { data, error } = await supabaseClient.from('gong_users').select('id, pseudo, skills, techniques, history, observations, updated_at').eq('id', state.user.id).maybeSingle();
   if (error) { console.warn('[Gōng] Supabase load error', error); return; }
   if (!data) { await ensureRemoteRow(); return; }
+  const remoteUpdatedAtTs = Date.parse(data.updated_at || '') || 0;
+  const localSnapshot = readLocalStateSnapshot();
+  const useLocalSnapshot = !!localSnapshot && localSnapshot.updatedAtTs > remoteUpdatedAtTs;
+
   state.user.pseudo = data.pseudo || state.user.pseudo;
-  state.skills = normalizeSkills(data.skills);
-  state.techniques = normalizeTechniques(data.techniques);
-  state.history = Array.isArray(data.history) ? data.history : [];
-  state.observations = typeof data.observations === 'string' ? data.observations : '';
+  state.skills = useLocalSnapshot ? localSnapshot.skills : normalizeSkills(data.skills);
+  state.techniques = useLocalSnapshot ? localSnapshot.techniques : normalizeTechniques(data.techniques);
+  state.history = useLocalSnapshot ? localSnapshot.history : (Array.isArray(data.history) ? data.history : []);
+  state.observations = useLocalSnapshot ? localSnapshot.observations : (typeof data.observations === 'string' ? data.observations : '');
   state.techniqueFilter = 'Toutes';
   if (obsEl) obsEl.value = state.observations;
+  saveLocalState();
   renderSkills(); renderTechniqueFilters(); renderTechniques(); renderHistory(); drawRadar('radar-canvas', state.skills);
 }
 
